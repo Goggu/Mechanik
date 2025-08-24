@@ -5,7 +5,7 @@ import Image from "next/image";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Phone, Siren, MapPin, Loader2, ShieldPlus } from "lucide-react";
+import { Phone, Siren, MapPin, Loader2, ShieldPlus, Male, Female, Unisex } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/icons/logo";
+import { cn } from "@/lib/utils";
 
 type AlertStatus =
   | "idle"
@@ -56,7 +57,10 @@ type Geolocation = {
 type AlertData = {
   phone: string;
   location: Geolocation;
+  gender: Gender;
 };
+
+type Gender = 'gents' | 'ladies' | 'trans';
 
 const formSchema = z.object({
   phone: z
@@ -65,9 +69,16 @@ const formSchema = z.object({
     .max(20, "Phone number is too long."),
 });
 
+const genderOptions: { id: Gender; label: string; icon: React.ElementType }[] = [
+  { id: 'gents', label: 'Gents', icon: Male },
+  { id: 'ladies', label: 'Ladies', icon: Female },
+  { id: 'trans', label: 'Trans', icon: Unisex },
+];
+
 export default function Home() {
   const [alertStatus, setAlertStatus] = useState<AlertStatus>("idle");
   const [alertData, setAlertData] = useState<AlertData | null>(null);
+  const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -89,6 +100,14 @@ export default function Home() {
   }, [alertStatus]);
 
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!selectedGender) {
+      toast({
+        variant: "destructive",
+        title: "Selection Required",
+        description: "Please select a gender option before sending an alert.",
+      });
+      return;
+    }
     setIsSubmitting(true);
     if (!navigator.geolocation) {
       toast({
@@ -103,7 +122,7 @@ export default function Home() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setAlertData({ phone: values.phone, location: { latitude, longitude } });
+        setAlertData({ phone: values.phone, location: { latitude, longitude }, gender: selectedGender });
         setAlertStatus("sent");
         setShowSendDialog(false);
         toast({
@@ -146,6 +165,7 @@ export default function Home() {
   const resetSimulation = () => {
     setAlertStatus("idle");
     setAlertData(null);
+    setSelectedGender(null);
   };
 
   return (
@@ -162,19 +182,42 @@ export default function Home() {
       <main className="flex-grow flex items-center justify-center p-4">
         <div className="container mx-auto text-center">
           {alertStatus === "idle" && (
-            <div className="flex flex-col items-center gap-6 animate-in fade-in-50 duration-500">
+            <div className="flex flex-col items-center gap-8 animate-in fade-in-50 duration-500">
               <ShieldPlus className="h-24 w-24 text-primary/80" />
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
-                Need Assistance?
-              </h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Press the button below to instantly alert a nearby user who can
-                help. Your location will be shared to guide them to you.
-              </p>
+              <div className="max-w-xl mx-auto space-y-2">
+                <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+                  Need Assistance?
+                </h2>
+                <p className="text-muted-foreground">
+                  Press the button below to instantly alert a nearby user who can
+                  help. Your location will be shared to guide them to you.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-4">
+                {genderOptions.map(({ id, label, icon: Icon }) => (
+                  <div key={id} className="flex flex-col items-center gap-2">
+                    <Button
+                      variant={selectedGender === id ? 'default' : 'outline'}
+                      size="icon"
+                      className={cn(
+                        "w-20 h-20 rounded-full transition-all duration-200 shadow-md hover:shadow-lg",
+                        selectedGender === id && "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                      )}
+                      onClick={() => setSelectedGender(id)}
+                    >
+                      <Icon className="h-8 w-8" />
+                    </Button>
+                    <span className="text-sm font-medium text-muted-foreground">{label}</span>
+                  </div>
+                ))}
+              </div>
+
               <Button
                 size="lg"
-                className="h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 animate-pulse-slow shadow-lg hover:shadow-xl transition-all"
+                className="h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none"
                 onClick={() => setShowSendDialog(true)}
+                disabled={!selectedGender}
               >
                 <Siren className="mr-4 h-8 w-8" />
                 SEND ALERT
@@ -310,3 +353,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
