@@ -5,7 +5,7 @@ import Image from "next/image";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Phone, Siren, MapPin, Loader2, ShieldPlus, Male, Female, Unisex } from "lucide-react";
+import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -70,9 +70,9 @@ const formSchema = z.object({
 });
 
 const genderOptions: { id: Gender; label: string; icon: React.ElementType }[] = [
-  { id: 'gents', label: 'Gents', icon: Male },
-  { id: 'ladies', label: 'Ladies', icon: Female },
-  { id: 'trans', label: 'Trans', icon: Unisex },
+  { id: 'gents', label: 'Gents', icon: User },
+  { id: 'ladies', label: 'Ladies', icon: UserRound },
+  { id: 'trans', label: 'Trans', icon: Users },
 ];
 
 export default function Home() {
@@ -215,7 +215,12 @@ export default function Home() {
 
               <Button
                 size="lg"
-                className="h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none"
+                className={cn(
+                  "h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl transition-all",
+                  "disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none",
+                  !selectedGender && "animate-none",
+                   selectedGender && "animate-pulse-slow"
+                )}
                 onClick={() => setShowSendDialog(true)}
                 disabled={!selectedGender}
               >
@@ -353,5 +358,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

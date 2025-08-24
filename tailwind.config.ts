@@ -81,11 +81,11 @@ export default {
         'pulse-slow': {
           '0%, 100%': { 
             transform: 'scale(1)',
-            'box-shadow': '0 0 0 0 hsl(var(--accent) / 0.7)' 
+            boxShadow: '0 0 0 0 hsl(var(--accent) / 0.7)' 
           },
           '70%': { 
             transform: 'scale(1.05)',
-            'box-shadow': '0 0 0 20px hsl(var(--accent) / 0)' 
+            boxShadow: '0 0 0 20px hsl(var(--accent) / 0)' 
           },
         },
       },
