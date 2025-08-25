@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
@@ -226,6 +226,9 @@ export default function Home() {
                 </Button>
               </SheetTrigger>
               <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Menu</SheetTitle>
+                </SheetHeader>
                 <nav className="flex flex-col gap-4 mt-8">
                   <a href="#" className="text-lg font-medium hover:text-primary">Profile</a>
                   <a href="#" className="text-lg font-medium hover:text-primary">History</a>
@@ -417,5 +420,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
