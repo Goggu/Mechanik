@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Languages, Menu } from "lucide-react";
 
 import {
@@ -21,6 +22,12 @@ import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Header() {
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const handleLinkClick = () => {
+    setIsSheetOpen(false);
+  };
+
   return (
     <header className="p-4 border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
       <div className="container mx-auto flex items-center justify-between gap-3">
@@ -44,7 +51,7 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
           <ThemeToggle />
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Menu />
@@ -58,12 +65,14 @@ export function Header() {
                 <Link
                   href="/signin"
                   className="text-lg font-medium hover:text-primary"
+                  onClick={handleLinkClick}
                 >
                   Login
                 </Link>
                 <Link
                   href="/signup"
                   className="text-lg font-medium hover:text-primary"
+                  onClick={handleLinkClick}
                 >
                   Signup
                 </Link>
