@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -199,12 +200,12 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-background text-foreground font-body">
       <header className="p-4 border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <Logo className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold tracking-tight text-primary">
               HelpNow
             </h1>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -230,10 +231,8 @@ export default function Home() {
                   <SheetTitle>Menu</SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col gap-4 mt-8">
-                  <a href="#" className="text-lg font-medium hover:text-primary">Profile</a>
-                  <a href="#" className="text-lg font-medium hover:text-primary">History</a>
-                  <a href="#" className="text-lg font-medium hover:text-primary">Settings</a>
-                  <a href="#" className="text-lg font-medium hover:text-primary">Logout</a>
+                  <Link href="/signin" className="text-lg font-medium hover:text-primary">Sign In</Link>
+                  <Link href="/signup" className="text-lg font-medium hover:text-primary">Sign Up</Link>
                 </nav>
               </SheetContent>
             </Sheet>
