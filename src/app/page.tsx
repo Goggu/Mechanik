@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users, Menu, Languages, Sun, Moon } from "lucide-react";
+import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,15 +36,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { Logo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 
 type AlertStatus =
@@ -82,26 +73,6 @@ const genderOptions: { id: Gender; label: string; icon: React.ElementType }[] = 
   { id: 'ladies', label: 'Ladies', icon: UserRound },
   { id: 'trans', label: 'Trans', icon: Users },
 ];
-
-function ThemeToggle() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains('dark');
-    setIsDarkMode(isDark);
-  }, []);
-
-  const toggleTheme = () => {
-    document.documentElement.classList.toggle('dark');
-    setIsDarkMode(!isDarkMode);
-  };
-
-  return (
-    <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-      {isDarkMode ? <Sun /> : <Moon />}
-    </Button>
-  );
-}
 
 export default function Home() {
   const [alertStatus, setAlertStatus] = useState<AlertStatus>("idle");
@@ -197,151 +168,107 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground font-body">
-      <header className="p-4 border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-3">
-            <Logo className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold tracking-tight text-primary">
-              HelpNow
-            </h1>
-          </Link>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Languages />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>English</DropdownMenuItem>
-                <DropdownMenuItem>Español</DropdownMenuItem>
-                <DropdownMenuItem>Français</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <ThemeToggle />
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu />
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Menu</SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col gap-4 mt-8">
-                  <Link href="/signin" className="text-lg font-medium hover:text-primary">Login</Link>
-                  <Link href="/signup" className="text-lg font-medium hover:text-primary">Signup</Link>
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-grow flex items-center justify-center p-4">
-        <div className="container mx-auto text-center">
-          {alertStatus === "idle" && (
-            <div className="flex flex-col items-center gap-8 animate-in fade-in-50 duration-500">
-              <ShieldPlus className="h-24 w-24 text-primary/80" />
-              <div className="max-w-xl mx-auto space-y-2">
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
-                  Need Assistance?
-                </h2>
-                <p className="text-muted-foreground">
-                  Press the button below to instantly alert a nearby user who can
-                  help. Your location will be shared to guide them to you.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-center gap-4">
-                {genderOptions.map(({ id, label, icon: Icon }) => (
-                  <div key={id} className="flex flex-col items-center gap-2">
-                    <Button
-                      variant={selectedGender === id ? 'default' : 'outline'}
-                      size="icon"
-                      className={cn(
-                        "w-20 h-20 rounded-full transition-all duration-200 shadow-md hover:shadow-lg",
-                        selectedGender === id && "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                      )}
-                      onClick={() => setSelectedGender(id)}
-                    >
-                      <Icon className="h-8 w-8" />
-                    </Button>
-                    <span className="text-sm font-medium text-muted-foreground">{label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <Button
-                size="lg"
-                className={cn(
-                  "h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl transition-all",
-                  "disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none",
-                  !selectedGender && "animate-none",
-                   selectedGender && "animate-pulse-slow"
-                )}
-                onClick={() => setShowSendDialog(true)}
-                disabled={!selectedGender}
-              >
-                <Siren className="mr-4 h-8 w-8" />
-                SEND ALERT
-              </Button>
-            </div>
-          )}
-
-          {alertStatus === "accepted" && alertData && (
-            <Card className="max-w-2xl mx-auto shadow-xl animate-in fade-in-50 duration-500">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-center gap-3 text-2xl text-primary">
-                  <MapPin />
-                  Proceed to Location
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p>
-                  The person in need is at the following location. Thank you for
-                  helping!
-                </p>
-                <div className="rounded-lg overflow-hidden border">
-                  <Image
-                    src="https://placehold.co/800x400"
-                    alt="Map placeholder"
-                    width={800}
-                    height={400}
-                    data-ai-hint="map street"
-                    className="w-full"
-                  />
-                </div>
-                <div className="text-sm bg-muted p-3 rounded-md font-mono">
-                  Lat: {alertData.location.latitude.toFixed(6)}, Lon:{" "}
-                  {alertData.location.longitude.toFixed(6)}
-                </div>
-                <Button
-                  onClick={resetSimulation}
-                  variant="outline"
-                  className="mt-4"
-                >
-                  Reset Simulation
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {(alertStatus === "sent" || alertStatus === "routing") && (
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-16 w-16 animate-spin text-primary" />
-              <h2 className="text-2xl font-semibold">
-                {alertStatus === "sent"
-                  ? "Contacting Help..."
-                  : "Finding Next Responder..."}
+    <>
+      <div className="container mx-auto text-center">
+        {alertStatus === "idle" && (
+          <div className="flex flex-col items-center gap-8 animate-in fade-in-50 duration-500">
+            <ShieldPlus className="h-24 w-24 text-primary/80" />
+            <div className="max-w-xl mx-auto space-y-2">
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+                Need Assistance?
               </h2>
-              <p className="text-muted-foreground">Please wait a moment.</p>
+              <p className="text-muted-foreground">
+                Press the button below to instantly alert a nearby user who can
+                help. Your location will be shared to guide them to you.
+              </p>
             </div>
-          )}
-        </div>
-      </main>
+
+            <div className="flex items-center justify-center gap-4">
+              {genderOptions.map(({ id, label, icon: Icon }) => (
+                <div key={id} className="flex flex-col items-center gap-2">
+                  <Button
+                    variant={selectedGender === id ? 'default' : 'outline'}
+                    size="icon"
+                    className={cn(
+                      "w-20 h-20 rounded-full transition-all duration-200 shadow-md hover:shadow-lg",
+                      selectedGender === id && "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                    )}
+                    onClick={() => setSelectedGender(id)}
+                  >
+                    <Icon className="h-8 w-8" />
+                  </Button>
+                  <span className="text-sm font-medium text-muted-foreground">{label}</span>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              size="lg"
+              className={cn(
+                "h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl transition-all",
+                "disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none",
+                !selectedGender && "animate-none",
+                 selectedGender && "animate-pulse-slow"
+              )}
+              onClick={() => setShowSendDialog(true)}
+              disabled={!selectedGender}
+            >
+              <Siren className="mr-4 h-8 w-8" />
+              SEND ALERT
+            </Button>
+          </div>
+        )}
+
+        {alertStatus === "accepted" && alertData && (
+          <Card className="max-w-2xl mx-auto shadow-xl animate-in fade-in-50 duration-500">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-center gap-3 text-2xl text-primary">
+                <MapPin />
+                Proceed to Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p>
+                The person in need is at the following location. Thank you for
+                helping!
+              </p>
+              <div className="rounded-lg overflow-hidden border">
+                <Image
+                  src="https://placehold.co/800x400"
+                  alt="Map placeholder"
+                  width={800}
+                  height={400}
+                  data-ai-hint="map street"
+                  className="w-full"
+                />
+              </div>
+              <div className="text-sm bg-muted p-3 rounded-md font-mono">
+                Lat: {alertData.location.latitude.toFixed(6)}, Lon:{" "}
+                {alertData.location.longitude.toFixed(6)}
+              </div>
+              <Button
+                onClick={resetSimulation}
+                variant="outline"
+                className="mt-4"
+              >
+                Reset Simulation
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {(alertStatus === "sent" || alertStatus === "routing") && (
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            <h2 className="text-2xl font-semibold">
+              {alertStatus === "sent"
+                ? "Contacting Help..."
+                : "Finding Next Responder..."}
+            </h2>
+            <p className="text-muted-foreground">Please wait a moment.</p>
+          </div>
+        )}
+      </div>
 
       <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
         <DialogContent className="sm:max-w-[425px]">
@@ -416,6 +343,6 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

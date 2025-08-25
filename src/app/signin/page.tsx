@@ -51,8 +51,8 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="container mx-auto">
+      <Card className="w-full max-w-md mx-auto">
         <CardHeader>
           <CardTitle>Sign In</CardTitle>
           <CardDescription>
