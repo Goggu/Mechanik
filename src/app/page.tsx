@@ -231,8 +231,8 @@ export default function Home() {
                   <SheetTitle>Menu</SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col gap-4 mt-8">
-                  <Link href="/signin" className="text-lg font-medium hover:text-primary">Sign In</Link>
-                  <Link href="/signup" className="text-lg font-medium hover:text-primary">Sign Up</Link>
+                  <Link href="/signin" className="text-lg font-medium hover:text-primary">Login</Link>
+                  <Link href="/signup" className="text-lg font-medium hover:text-primary">Signup</Link>
                 </nav>
               </SheetContent>
             </Sheet>
