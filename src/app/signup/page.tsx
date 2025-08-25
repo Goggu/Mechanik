@@ -18,7 +18,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -40,8 +39,8 @@ const formSchema = z.object({
   partnerType: z.enum(["male", "female", "trans"]).optional(),
 })
 .refine(data => {
-    if (data.userType === 'partner') {
-        return !!data.partnerType;
+    if (data.userType === 'partner' && !data.partnerType) {
+        return false;
     }
     return true;
 }, {
