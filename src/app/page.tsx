@@ -5,7 +5,7 @@ import Image from "next/image";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users } from "lucide-react";
+import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users, Menu, Languages, Sun, Moon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
@@ -74,6 +81,26 @@ const genderOptions: { id: Gender; label: string; icon: React.ElementType }[] = 
   { id: 'ladies', label: 'Ladies', icon: UserRound },
   { id: 'trans', label: 'Trans', icon: Users },
 ];
+
+function ThemeToggle() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setIsDarkMode(isDark);
+  }, []);
+
+  const toggleTheme = () => {
+    document.documentElement.classList.toggle('dark');
+    setIsDarkMode(!isDarkMode);
+  };
+
+  return (
+    <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+      {isDarkMode ? <Sun /> : <Moon />}
+    </Button>
+  );
+}
 
 export default function Home() {
   const [alertStatus, setAlertStatus] = useState<AlertStatus>("idle");
@@ -171,11 +198,43 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground font-body">
       <header className="p-4 border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto flex items-center gap-3">
-          <Logo className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            HelpNow
-          </h1>
+        <div className="container mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Logo className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold tracking-tight text-primary">
+              HelpNow
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Languages />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>English</DropdownMenuItem>
+                <DropdownMenuItem>Español</DropdownMenuItem>
+                <DropdownMenuItem>Français</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ThemeToggle />
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu />
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <nav className="flex flex-col gap-4 mt-8">
+                  <a href="#" className="text-lg font-medium hover:text-primary">Profile</a>
+                  <a href="#" className="text-lg font-medium hover:text-primary">History</a>
+                  <a href="#" className="text-lg font-medium hover:text-primary">Settings</a>
+                  <a href="#" className="text-lg font-medium hover:text-primary">Logout</a>
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </header>
 
@@ -358,3 +417,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
