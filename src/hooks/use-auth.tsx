@@ -55,8 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             partnerType: userData.partnerType,
           });
         } else {
-          // If user exists in Auth but not in Firestore, sign them out
-          // or handle as an error state.
+          // If user exists in Auth but not in Firestore, treat as partially logged in
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -135,7 +134,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
