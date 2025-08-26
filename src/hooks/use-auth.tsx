@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, useContext } from "react";
@@ -45,20 +46,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // First, set basic user auth data
+        const basicUserData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+        };
+        setUser(basicUserData);
+
+        // Then, fetch detailed user data from Firestore
         const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
         if (userDoc.exists()) {
-          const userData = userDoc.data();
+          const fullUserData = userDoc.data();
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            userType: userData.userType,
-            partnerType: userData.partnerType,
-          });
-        } else {
-          // If user exists in Auth but not in Firestore, treat as partially logged in
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
+            userType: fullUserData.userType,
+            partnerType: fullUserData.partnerType,
           });
         }
       } else {
@@ -69,6 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
+
 
   const signup = async (
     email: string,
@@ -134,7 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
