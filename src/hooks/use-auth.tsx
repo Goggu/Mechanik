@@ -45,23 +45,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        const userDocRef = doc(db, "users", firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            userType: userData.type,
-            partnerType: userData['sub-type'],
-          });
-        } else {
-           // This case can happen if a user is created in Auth but the Firestore doc creation fails.
-           // Or for users created before the Firestore logic was in place.
-           setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
-        }
+        setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
       } else {
         setUser(null);
       }
@@ -70,6 +56,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user?.uid && !user.userType) {
+      const fetchUserData = async () => {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser((prevUser) => ({
+            ...prevUser!,
+            userType: userData.type,
+            partnerType: userData['sub-type'],
+          }));
+        }
+      };
+      fetchUserData();
+    }
+  }, [user?.uid]);
 
   const signup = async (
     email: string,
@@ -84,7 +88,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
     const firebaseUser = userCredential.user;
     
-    // Create user document in Firestore
     const userDocRef = doc(db, "users", firebaseUser.uid);
     const userDataToSave: any = {
         uid: firebaseUser.uid,
@@ -98,7 +101,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     await setDoc(userDocRef, userDataToSave);
 
-    // Update local state
     setUser({
       uid: firebaseUser.uid,
       email: firebaseUser.email,
@@ -113,23 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email,
       password
     );
-    const firebaseUser = userCredential.user;
-    const userDocRef = doc(db, "users", firebaseUser.uid);
-    const userDoc = await getDoc(userDocRef);
-
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      // Update local state with data from both Auth and Firestore
-       setUser({
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        userType: userData.type,
-        partnerType: userData['sub-type'],
-      });
-    } else {
-        // Handle case where user exists in Auth but not Firestore
-        throw new Error("User data not found in database. Please contact support.");
-    }
+    // onAuthStateChanged will handle setting the user state.
   };
 
   const logout = async () => {
