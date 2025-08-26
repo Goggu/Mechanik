@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,7 @@ import {
   RadioGroupItem,
 } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
@@ -50,6 +52,8 @@ const formSchema = z.object({
 
 export default function SignUpPage() {
   const { toast } = useToast();
+  const { signup } = useAuth();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,12 +65,22 @@ export default function SignUpPage() {
 
   const userType = form.watch("userType");
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log(values);
-    toast({
-      title: "Account Created!",
-      description: "You have successfully signed up.",
-    });
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+        await signup(values.email, values.password, values.userType, values.partnerType);
+        toast({
+            title: "Account Created!",
+            description: "You have successfully signed up.",
+        });
+        router.push("/");
+    } catch (error: any) {
+        console.error(error);
+        toast({
+            variant: "destructive",
+            title: "Signup failed",
+            description: error.message || "An unexpected error occurred.",
+        });
+    }
   };
 
   return (
@@ -197,7 +211,8 @@ export default function SignUpPage() {
                 />
               )}
 
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign Up
               </Button>
             </form>
