@@ -12,6 +12,7 @@ import {
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 type UserType = "public" | "partner";
 type PartnerType = "male" | "female" | "trans";
@@ -44,9 +45,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            userType: userData.userType,
+            partnerType: userData.partnerType,
+          });
+        } else {
+           setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+        }
       } else {
         setUser(null);
       }
@@ -55,23 +67,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (user?.uid && !user.userType) {
-      const fetchUserData = async () => {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          const fullUserData = userDoc.data();
-          setUser((prevUser) => ({
-            ...prevUser!,
-            userType: fullUserData.userType,
-            partnerType: fullUserData.partnerType,
-          }));
-        }
-      };
-      fetchUserData();
-    }
-  }, [user]);
 
   const signup = async (
     email: string,
@@ -154,21 +149,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// We need a Loader component to avoid icon not found errors
-const Loader2 = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
-);
