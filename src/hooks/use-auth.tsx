@@ -44,25 +44,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-        if (userDoc.exists()) {
-          const fullUserData = userDoc.data();
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            userType: fullUserData.userType,
-            partnerType: fullUserData.partnerType,
-          });
-        } else {
-            // This case might happen if user exists in auth but not in firestore db
-            // Or if they are signing up for the first time
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-            });
-        }
+        setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
       } else {
         setUser(null);
       }
@@ -71,6 +55,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user?.uid && !user.userType) {
+      const fetchUserData = async () => {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const fullUserData = userDoc.data();
+          setUser((prevUser) => ({
+            ...prevUser!,
+            userType: fullUserData.userType,
+            partnerType: fullUserData.partnerType,
+          }));
+        }
+      };
+      fetchUserData();
+    }
+  }, [user]);
 
   const signup = async (
     email: string,
@@ -117,7 +118,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         partnerType: userData.partnerType,
       });
     } else {
-        // Handle case where user exists in Auth but not Firestore
         throw new Error("User data not found in database.");
     }
   };
