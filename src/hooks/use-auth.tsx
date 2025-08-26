@@ -47,16 +47,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const userData = userDoc.data();
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            userType: userData.userType,
-            partnerType: userData.partnerType,
+            userType: userData.type, // maps 'type' field from firestore
+            partnerType: userData['sub-type'], // maps 'sub-type' field from firestore
           });
         } else {
+           // This case might happen if user exists in Auth but not in Firestore
            setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
         }
       } else {
@@ -80,18 +82,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       password
     );
     const firebaseUser = userCredential.user;
+    
+    const userDocRef = doc(db, "users", firebaseUser.uid);
+    const userDataToSave: any = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        type: userType, // saving as 'type'
+    };
 
-    const userData: Omit<User, "uid" | "email"> = { userType };
     if (userType === 'partner' && partnerType) {
-        userData.partnerType = partnerType;
+        userDataToSave['sub-type'] = partnerType; // saving as 'sub-type'
     }
 
-    await setDoc(doc(db, "users", firebaseUser.uid), userData);
+    await setDoc(userDocRef, userDataToSave);
 
     setUser({
       uid: firebaseUser.uid,
       email: firebaseUser.email,
-      ...userData
+      userType: userType,
+      partnerType: partnerType,
     });
   };
 
@@ -102,15 +111,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       password
     );
     const firebaseUser = userCredential.user;
-    const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+    const userDocRef = doc(db, "users", firebaseUser.uid);
+    const userDoc = await getDoc(userDocRef);
 
     if (userDoc.exists()) {
       const userData = userDoc.data();
        setUser({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        userType: userData.userType,
-        partnerType: userData.partnerType,
+        userType: userData.type,
+        partnerType: userData['sub-type'],
       });
     } else {
         throw new Error("User data not found in database.");
