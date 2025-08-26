@@ -46,14 +46,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // First, set basic user auth data
-        const basicUserData = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-        };
-        setUser(basicUserData);
-
-        // Then, fetch detailed user data from Firestore
         const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
         if (userDoc.exists()) {
           const fullUserData = userDoc.data();
@@ -63,6 +55,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             userType: fullUserData.userType,
             partnerType: fullUserData.partnerType,
           });
+        } else {
+            // This case might happen if user exists in auth but not in firestore db
+            // Or if they are signing up for the first time
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+            });
         }
       } else {
         setUser(null);
@@ -72,7 +71,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
-
 
   const signup = async (
     email: string,
@@ -138,6 +136,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logout,
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
@@ -148,3 +154,21 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// We need a Loader component to avoid icon not found errors
+const Loader2 = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);
