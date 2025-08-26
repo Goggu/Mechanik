@@ -1,8 +1,9 @@
+
 "use client";
 
 import Link from "next/link";
 import { useState } from "react";
-import { Languages, Menu } from "lucide-react";
+import { Languages, Menu, LogOut } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -20,9 +21,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/hooks/use-auth";
 
 export function Header() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const handleLinkClick = () => {
     setIsSheetOpen(false);
@@ -62,20 +65,36 @@ export function Header() {
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-4 mt-8">
-                <Link
-                  href="/signin"
-                  className="text-lg font-medium hover:text-primary"
-                  onClick={handleLinkClick}
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/signup"
-                  className="text-lg font-medium hover:text-primary"
-                  onClick={handleLinkClick}
-                >
-                  Signup
-                </Link>
+                {!user ? (
+                  <>
+                    <Link
+                      href="/signin"
+                      className="text-lg font-medium hover:text-primary"
+                      onClick={handleLinkClick}
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="text-lg font-medium hover:text-primary"
+                      onClick={handleLinkClick}
+                    >
+                      Signup
+                    </Link>
+                  </>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="justify-start p-0 text-lg font-medium hover:text-destructive"
+                    onClick={() => {
+                      logout();
+                      handleLinkClick();
+                    }}
+                  >
+                    <LogOut className="mr-2 h-5 w-5" />
+                    Logout
+                  </Button>
+                )}
               </nav>
             </SheetContent>
           </Sheet>

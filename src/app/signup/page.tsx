@@ -61,6 +61,7 @@ export default function SignUpPage() {
     defaultValues: {
       email: "",
       password: "",
+      userType: "public",
     },
   });
 
@@ -75,11 +76,24 @@ export default function SignUpPage() {
         });
         router.push("/");
     } catch (error: any) {
-        console.error(error);
+        console.error("Signup error:", error);
+        let errorMessage = "An unexpected error occurred.";
+        if (error.code) {
+          switch (error.code) {
+            case 'auth/email-already-in-use':
+              errorMessage = 'This email address is already in use.';
+              break;
+            case 'auth/weak-password':
+              errorMessage = 'The password is too weak.';
+              break;
+            default:
+              errorMessage = error.message;
+          }
+        }
         toast({
             variant: "destructive",
-            title: "Signup failed",
-            description: error.message || "An unexpected error occurred.",
+            title: "Sign up failed",
+            description: errorMessage,
         });
     }
   };

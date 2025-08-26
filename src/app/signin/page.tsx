@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -55,11 +56,25 @@ export default function SignInPage() {
       });
       router.push("/");
     } catch (error: any) {
-      console.error(error);
+      console.error("Sign in error:", error);
+      let errorMessage = "An unexpected error occurred.";
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+            errorMessage = 'Invalid email or password.';
+            break;
+          case 'auth/invalid-credential':
+             errorMessage = 'Invalid email or password.';
+            break;
+          default:
+            errorMessage = error.message;
+        }
+      }
       toast({
         variant: "destructive",
         title: "Sign in failed",
-        description: error.message || "An unexpected error occurred.",
+        description: errorMessage,
       });
     }
   };

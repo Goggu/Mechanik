@@ -54,11 +54,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            userType: userData.type, // maps 'type' field from firestore
-            partnerType: userData['sub-type'], // maps 'sub-type' field from firestore
+            userType: userData.type,
+            partnerType: userData['sub-type'],
           });
         } else {
-           // This case might happen if user exists in Auth but not in Firestore
+           // This case can happen if a user is created in Auth but the Firestore doc creation fails.
+           // Or for users created before the Firestore logic was in place.
            setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
         }
       } else {
@@ -83,19 +84,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
     const firebaseUser = userCredential.user;
     
+    // Create user document in Firestore
     const userDocRef = doc(db, "users", firebaseUser.uid);
     const userDataToSave: any = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        type: userType, // saving as 'type'
+        type: userType,
     };
 
     if (userType === 'partner' && partnerType) {
-        userDataToSave['sub-type'] = partnerType; // saving as 'sub-type'
+        userDataToSave['sub-type'] = partnerType;
     }
 
     await setDoc(userDocRef, userDataToSave);
 
+    // Update local state
     setUser({
       uid: firebaseUser.uid,
       email: firebaseUser.email,
@@ -116,6 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (userDoc.exists()) {
       const userData = userDoc.data();
+      // Update local state with data from both Auth and Firestore
        setUser({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -123,7 +127,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         partnerType: userData['sub-type'],
       });
     } else {
-        throw new Error("User data not found in database.");
+        // Handle case where user exists in Auth but not Firestore
+        throw new Error("User data not found in database. Please contact support.");
     }
   };
 
@@ -143,8 +148,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex items-center justify-center h-screen w-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
