@@ -246,7 +246,7 @@ export default function Home() {
               </p>
               <div className="rounded-lg overflow-hidden border">
                 <Image
-                  src="https://placehold.co/800x400"
+                  src={`https://placehold.co/800x400?text=Map+to+Location`}
                   alt="Map placeholder"
                   width={800}
                   height={400}
@@ -254,9 +254,16 @@ export default function Home() {
                   className="w-full"
                 />
               </div>
-              <div className="text-sm bg-muted p-3 rounded-md font-mono">
-                Lat: {alertData.location.latitude.toFixed(6)}, Lon:{" "}
-                {alertData.location.longitude.toFixed(6)}
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div className="text-sm bg-muted p-3 rounded-md font-mono">
+                  <p className="font-bold text-muted-foreground">Location:</p>
+                  Lat: {alertData.location.latitude.toFixed(6)}, <br />
+                  Lon: {alertData.location.longitude.toFixed(6)}
+                </div>
+                <div className="text-sm bg-muted p-3 rounded-md font-mono">
+                  <p className="font-bold text-muted-foreground">Contact:</p>
+                  {alertData.phone}
+                </div>
               </div>
               <Button
                 onClick={resetSimulation}
@@ -455,16 +462,15 @@ export default function Home() {
               <span className="text-destructive">Emergency Alert</span>
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Someone nearby needs your help. Are you available to respond and
-              go to their location?
+              Someone nearby needs your help. Are you available to respond?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleDecline}>
-              No, I can't
+              No
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleAccept}>
-              Yes, I can help
+              Yes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -472,3 +478,5 @@ export default function Home() {
     </>
   );
 }
+
+    
