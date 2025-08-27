@@ -87,6 +87,7 @@ export default function Home() {
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [location, setLocation] = useState<Geolocation | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -128,7 +129,7 @@ export default function Home() {
     }
   }, [alertStatus, selectedGender]);
 
-  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+  const handleSendAlertClick = () => {
     if (!selectedGender) {
       toast({
         variant: "destructive",
@@ -137,29 +138,21 @@ export default function Home() {
       });
       return;
     }
-    setIsSubmitting(true);
+
     if (!navigator.geolocation) {
       toast({
         variant: "destructive",
         title: "Geolocation Not Supported",
         description: "Your browser does not support geolocation.",
       });
-      setIsSubmitting(false);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setAlertData({ phone: values.phone, location: { latitude, longitude }, gender: selectedGender });
-        setAlertStatus("sent");
-        setShowSendDialog(false);
-        toast({
-          title: "Alert Sent!",
-          description: "We are notifying the nearest available user.",
-        });
-        setIsSubmitting(false);
-        form.reset();
+        setLocation({ latitude, longitude });
+        setShowSendDialog(true);
       },
       (error) => {
         toast({
@@ -170,9 +163,29 @@ export default function Home() {
               ? "Please allow location access to send an alert."
               : error.message,
         });
-        setIsSubmitting(false);
       }
     );
+  };
+
+  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!selectedGender || !location) {
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gender and location must be available to send an alert.",
+      });
+      return;
+    }
+    setIsSubmitting(true);
+    setAlertData({ phone: values.phone, location, gender: selectedGender });
+    setAlertStatus("sent");
+    setShowSendDialog(false);
+    toast({
+      title: "Alert Sent!",
+      description: "We are notifying the nearest available user.",
+    });
+    setIsSubmitting(false);
+    form.reset();
   };
 
   const handleAccept = () => {
@@ -195,6 +208,7 @@ export default function Home() {
     setAlertStatus("idle");
     setAlertData(null);
     setSelectedGender(null);
+    setLocation(null);
   };
   
   const renderContent = () => {
@@ -338,7 +352,7 @@ export default function Home() {
                 !selectedGender && "animate-none",
                  selectedGender && "animate-pulse-slow"
               )}
-              onClick={() => setShowSendDialog(true)}
+              onClick={handleSendAlertClick}
               disabled={!selectedGender}
             >
               <Siren className="mr-4 h-8 w-8" />
@@ -478,5 +492,3 @@ export default function Home() {
     </>
   );
 }
-
-    
