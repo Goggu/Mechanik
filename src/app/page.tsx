@@ -1,11 +1,13 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users } from "lucide-react";
+import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users, LogIn, CircleHelp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 type AlertStatus =
   | "idle"
@@ -59,7 +62,7 @@ type AlertData = {
   gender: Gender;
 };
 
-type Gender = 'gents' | 'ladies' | 'trans';
+type Gender = 'male' | 'female' | 'trans';
 
 const formSchema = z.object({
   phone: z
@@ -69,12 +72,16 @@ const formSchema = z.object({
 });
 
 const genderOptions: { id: Gender; label: string; icon: React.ElementType }[] = [
-  { id: 'gents', label: 'Gents', icon: User },
-  { id: 'ladies', label: 'Ladies', icon: UserRound },
+  { id: 'male', label: 'Gents', icon: User },
+  { id: 'female', label: 'Ladies', icon: UserRound },
   { id: 'trans', label: 'Trans', icon: Users },
 ];
 
+// This is a global listener for our simulation
+let alertListener: ((gender: Gender) => void) | null = null;
+
 export default function Home() {
+  const { user } = useAuth();
   const [alertStatus, setAlertStatus] = useState<AlertStatus>("idle");
   const [alertData, setAlertData] = useState<AlertData | null>(null);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
@@ -86,17 +93,40 @@ export default function Home() {
     resolver: zodResolver(formSchema),
     defaultValues: { phone: "" },
   });
-
+  
+  // Effect for partner users to listen for alerts
   useEffect(() => {
-    if (alertStatus === "sent") {
-      const timer = setTimeout(() => setAlertStatus("received"), 2500);
+    if (user?.userType === 'partner') {
+      const partnerGender = user.partnerType;
+      const handleAlert = (alertGender: Gender) => {
+        if (partnerGender === alertGender) {
+          setAlertStatus("received");
+        }
+      };
+
+      alertListener = handleAlert;
+
+      // Cleanup listener when the component unmounts or user changes
+      return () => {
+        alertListener = null;
+      };
+    }
+  }, [user]);
+
+
+  // Effect to simulate alert routing timeouts
+  useEffect(() => {
+    if (alertStatus === "sent" || alertStatus === "routing") {
+      const timer = setTimeout(() => {
+        // If a partner has subscribed, trigger their listener
+        if (alertListener && selectedGender) {
+            alertListener(selectedGender);
+        }
+      }, 2500);
+
       return () => clearTimeout(timer);
     }
-    if (alertStatus === "routing") {
-      const timer = setTimeout(() => setAlertStatus("received"), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [alertStatus]);
+  }, [alertStatus, selectedGender]);
 
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
     if (!selectedGender) {
@@ -166,20 +196,113 @@ export default function Home() {
     setAlertData(null);
     setSelectedGender(null);
   };
+  
+  const renderContent = () => {
+    // If user is not logged in
+    if (!user) {
+      return (
+         <Card className="max-w-xl mx-auto animate-in fade-in-50 duration-500">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                    <Logo className="h-8 w-8 text-primary"/>
+                    Welcome to HelpNow
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <p className="text-muted-foreground">
+                    Your community-based safety network. Please sign in or create an account to send or receive alerts.
+                </p>
+                <div className="flex gap-4">
+                     <Button asChild className="w-full">
+                        <Link href="/signin">
+                            <LogIn />
+                            Sign In
+                        </Link>
+                    </Button>
+                    <Button asChild variant="secondary" className="w-full">
+                        <Link href="/signup">
+                            Create Account
+                        </Link>
+                    </Button>
+                </div>
+            </CardContent>
+         </Card>
+      );
+    }
 
-  return (
-    <>
-      <div className="container mx-auto text-center">
-        {alertStatus === "idle" && (
+    // If user is a partner
+    if (user.userType === 'partner') {
+       if (alertStatus === "accepted" && alertData) {
+        return (
+          <Card className="max-w-2xl mx-auto shadow-xl animate-in fade-in-50 duration-500">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-center gap-3 text-2xl text-primary">
+                <MapPin />
+                Proceed to Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <p>
+                The person in need is at the following location. Thank you for
+                helping!
+              </p>
+              <div className="rounded-lg overflow-hidden border">
+                <Image
+                  src="https://placehold.co/800x400"
+                  alt="Map placeholder"
+                  width={800}
+                  height={400}
+                  data-ai-hint="map street"
+                  className="w-full"
+                />
+              </div>
+              <div className="text-sm bg-muted p-3 rounded-md font-mono">
+                Lat: {alertData.location.latitude.toFixed(6)}, Lon:{" "}
+                {alertData.location.longitude.toFixed(6)}
+              </div>
+              <Button
+                onClick={resetSimulation}
+                variant="outline"
+                className="mt-4"
+              >
+                Reset Simulation
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      }
+      return (
+        <Card className="max-w-md mx-auto text-center animate-in fade-in-50 duration-500">
+            <CardHeader>
+                <CardTitle className="flex items-center justify-center gap-3">
+                    <ShieldPlus className="text-primary"/>
+                    You Are Ready to Help
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <p className="text-muted-foreground">
+                    You are currently online and will be notified if someone nearby needs your assistance.
+                </p>
+                <p className="text-sm font-semibold text-primary capitalize rounded-full bg-primary/10 px-3 py-1 inline-block">
+                    Your Responder Type: {user.partnerType}
+                </p>
+            </CardContent>
+        </Card>
+      )
+    }
+
+    // If user is public
+    if (user.userType === 'public') {
+      if (alertStatus === "idle") {
+        return (
           <div className="flex flex-col items-center gap-8 animate-in fade-in-50 duration-500">
             <ShieldPlus className="h-24 w-24 text-primary/80" />
-            <div className="max-w-xl mx-auto space-y-2">
+            <div className="max-w-xl mx-auto space-y-2 text-center">
               <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
                 Need Assistance?
               </h2>
               <p className="text-muted-foreground">
-                Press the button below to instantly alert a nearby user who can
-                help. Your location will be shared to guide them to you.
+                Select the type of responder you need and press the button below. Your location will be shared to guide them to you.
               </p>
             </div>
 
@@ -217,57 +340,62 @@ export default function Home() {
               SEND ALERT
             </Button>
           </div>
-        )}
+        );
+      }
+      
+      if (alertStatus === "accepted" && alertData) {
+          return (
+             <Card className="max-w-md mx-auto text-center animate-in fade-in-50 duration-500">
+                <CardHeader>
+                    <CardTitle className="text-primary flex items-center justify-center gap-3">
+                        <CircleHelp />
+                        Help is On The Way!
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <p>A responder has accepted your alert and is en route to your location. Please stay safe.</p>
+                    <p className="text-sm bg-muted p-3 rounded-md font-mono">
+                        Lat: {alertData.location.latitude.toFixed(6)}, Lon:{" "}
+                        {alertData.location.longitude.toFixed(6)}
+                    </p>
+                     <Button
+                        onClick={resetSimulation}
+                        variant="outline"
+                        className="mt-4"
+                    >
+                        End Alert
+                    </Button>
+                </CardContent>
+            </Card>
+          )
+      }
 
-        {alertStatus === "accepted" && alertData && (
-          <Card className="max-w-2xl mx-auto shadow-xl animate-in fade-in-50 duration-500">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-center gap-3 text-2xl text-primary">
-                <MapPin />
-                Proceed to Location
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p>
-                The person in need is at the following location. Thank you for
-                helping!
-              </p>
-              <div className="rounded-lg overflow-hidden border">
-                <Image
-                  src="https://placehold.co/800x400"
-                  alt="Map placeholder"
-                  width={800}
-                  height={400}
-                  data-ai-hint="map street"
-                  className="w-full"
-                />
-              </div>
-              <div className="text-sm bg-muted p-3 rounded-md font-mono">
-                Lat: {alertData.location.latitude.toFixed(6)}, Lon:{" "}
-                {alertData.location.longitude.toFixed(6)}
-              </div>
-              <Button
-                onClick={resetSimulation}
-                variant="outline"
-                className="mt-4"
-              >
-                Reset Simulation
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {(alertStatus === "sent" || alertStatus === "routing") && (
-          <div className="flex flex-col items-center gap-4">
+      if (alertStatus === "sent" || alertStatus === "routing") {
+         return (
+          <div className="flex flex-col items-center gap-4 text-center">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
             <h2 className="text-2xl font-semibold">
               {alertStatus === "sent"
                 ? "Contacting Help..."
                 : "Finding Next Responder..."}
             </h2>
-            <p className="text-muted-foreground">Please wait a moment.</p>
+            <p className="text-muted-foreground max-w-sm">
+                We are searching for the nearest available {selectedGender} responder. Please wait a moment.
+            </p>
           </div>
-        )}
+        );
+      }
+    }
+    
+    // Fallback for any other case
+    return null;
+  }
+
+
+  return (
+    <>
+      <div className="container mx-auto text-center flex-grow flex items-center justify-center">
+        {renderContent()}
       </div>
 
       <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
@@ -307,9 +435,9 @@ export default function Home() {
               <DialogFooter>
                 <Button type="submit" disabled={isSubmitting} className="w-full">
                   {isSubmitting ? (
-                    <Loader2 className="animate-spin mr-2" />
+                    <Loader2 className="animate-spin" />
                   ) : (
-                    <Siren className="mr-2 h-4 w-4" />
+                    <Siren />
                   )}
                   {isSubmitting
                     ? "Sending..."
@@ -344,5 +472,25 @@ export default function Home() {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+// Simple Logo component to be used in the logged-out view
+function Logo(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="M12 8v8" />
+      <path d="M8 12h8" />
+    </svg>
   );
 }

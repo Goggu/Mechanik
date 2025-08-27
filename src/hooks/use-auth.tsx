@@ -45,9 +45,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            userType: userData.type,
+            partnerType: userData['sub-type'],
+          });
+        } else {
+            // This might happen if the user was created in auth but not in firestore
+            // Or if they are a new signup and the doc hasn't been created yet.
+            // For now, we set basic info. The signup/login functions will set the rest.
+             setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+        }
       } else {
         setUser(null);
       }
@@ -56,24 +71,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (user?.uid && !user.userType) {
-      const fetchUserData = async () => {
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUser((prevUser) => ({
-            ...prevUser!,
-            userType: userData.type,
-            partnerType: userData['sub-type'],
-          }));
-        }
-      };
-      fetchUserData();
-    }
-  }, [user?.uid]);
 
   const signup = async (
     email: string,
@@ -115,7 +112,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email,
       password
     );
-    // onAuthStateChanged will handle setting the user state.
+    // onAuthStateChanged will handle setting the user state, 
+    // we don't need to call setUser here to avoid race conditions.
   };
 
   const logout = async () => {
