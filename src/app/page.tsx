@@ -138,7 +138,10 @@ export default function Home() {
       });
       return;
     }
+    setShowSendDialog(true);
+  };
 
+  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
     if (!navigator.geolocation) {
       toast({
         variant: "destructive",
@@ -147,12 +150,34 @@ export default function Home() {
       });
       return;
     }
+    
+    setIsSubmitting(true);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setLocation({ latitude, longitude });
-        setShowSendDialog(true);
+        const currentLocation = { latitude, longitude };
+        setLocation(currentLocation);
+        
+        if (!selectedGender) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Gender must be selected to send an alert.",
+            });
+            setIsSubmitting(false);
+            return;
+        }
+
+        setAlertData({ phone: values.phone, location: currentLocation, gender: selectedGender });
+        setAlertStatus("sent");
+        setShowSendDialog(false);
+        toast({
+          title: "Alert Sent!",
+          description: "We are notifying the nearest available user.",
+        });
+        setIsSubmitting(false);
+        form.reset();
       },
       (error) => {
         toast({
@@ -163,29 +188,9 @@ export default function Home() {
               ? "Please allow location access to send an alert."
               : error.message,
         });
+        setIsSubmitting(false);
       }
     );
-  };
-
-  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!selectedGender || !location) {
-       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Gender and location must be available to send an alert.",
-      });
-      return;
-    }
-    setIsSubmitting(true);
-    setAlertData({ phone: values.phone, location, gender: selectedGender });
-    setAlertStatus("sent");
-    setShowSendDialog(false);
-    toast({
-      title: "Alert Sent!",
-      description: "We are notifying the nearest available user.",
-    });
-    setIsSubmitting(false);
-    form.reset();
   };
 
   const handleAccept = () => {
@@ -219,10 +224,10 @@ export default function Home() {
           <ShieldPlus className="h-24 w-24 text-primary/80" />
           <div className="max-w-xl mx-auto space-y-2 text-center">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
-              Your Community Safety Net
+              Need Assistance?
             </h2>
             <p className="text-muted-foreground">
-              Please sign in or create an account to send or receive alerts. Join HelpNow to be a part of a network that cares.
+              Your location will be shared to guide them to you. Please sign in or create an account to send or receive alerts.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
@@ -492,3 +497,5 @@ export default function Home() {
     </>
   );
 }
+
+    
