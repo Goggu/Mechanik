@@ -6,6 +6,9 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Phone, Siren, Loader2, ShieldPlus, User, UserRound, Users, CircleHelp, XCircle } from "lucide-react";
+import { collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/hooks/use-auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -55,7 +58,9 @@ const genderOptions: { id: Gender; label: string; icon: React.ElementType }[] = 
 ];
 
 export function AlerterView() {
+  const { user } = useAuth();
   const [alertStatus, setAlertStatus] = useState<AlertStatus>("idle");
+  const [activeAlertId, setActiveAlertId] = useState<string | null>(null);
   const [alertData, setAlertData] = useState<AlertData | null>(null);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
   const [showSendDialog, setShowSendDialog] = useState(false);
@@ -68,21 +73,26 @@ export function AlerterView() {
     defaultValues: { phone: "" },
   });
 
-  // This is a global listener for our simulation
-  let alertListener: ((gender: Gender) => void) | null = null;
-  
-  // Effect to simulate alert routing timeouts
   useEffect(() => {
-    if (alertStatus === "sent") {
-      const timer = setTimeout(() => {
-        // In a real app, you'd check if a responder has accepted.
-        // Here we simulate one accepting.
-        setAlertStatus("accepted");
-      }, 5000); // Simulate 5 second wait for a responder
+    if (!activeAlertId) return;
 
-      return () => clearTimeout(timer);
-    }
-  }, [alertStatus]);
+    const unsub = onSnapshot(doc(db, "alerts", activeAlertId), (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        if (data.status === 'accepted') {
+          setAlertStatus("accepted");
+        }
+      } else {
+        // Document was deleted (either accepted and reset, or cancelled)
+        if (alertStatus !== 'accepted') {
+           resetSimulation();
+        }
+      }
+    });
+
+    return () => unsub();
+  }, [activeAlertId, alertStatus]);
+
 
   const handleSendAlertClick = () => {
     if (!selectedGender) {
@@ -122,26 +132,68 @@ export function AlerterView() {
     );
   };
 
-  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!location || !selectedGender) {
+  const handleFormSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!location || !selectedGender || !user) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Location and gender are required to send an alert.",
+        description: "Location, gender, and user authentication are required.",
       });
       return;
     }
     
     setIsSubmitting(true);
-    setAlertData({ phone: values.phone, location, gender: selectedGender });
+    const currentAlertData = { phone: values.phone, location, gender: selectedGender };
+    setAlertData(currentAlertData);
     setAlertStatus("sent");
     setShowSendDialog(false);
-    toast({
-      title: "Alert Sent!",
-      description: "We are notifying the nearest available user.",
-    });
-    setIsSubmitting(false);
-    form.reset();
+
+    try {
+        const docRef = await addDoc(collection(db, "alerts"), {
+            alerterId: user.uid,
+            phone: values.phone,
+            location: currentAlertData.location,
+            gender: currentAlertData.gender,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+        });
+        setActiveAlertId(docRef.id);
+        toast({
+            title: "Alert Sent!",
+            description: "We are notifying the nearest available user.",
+        });
+    } catch (error) {
+        console.error("Error sending alert:", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to Send Alert",
+            description: "Could not create alert in the database. Please try again.",
+        });
+        resetSimulation();
+    } finally {
+        setIsSubmitting(false);
+        form.reset();
+    }
+  };
+
+  const cancelAlert = async () => {
+    if (activeAlertId) {
+      try {
+        await deleteDoc(doc(db, "alerts", activeAlertId));
+        toast({
+          title: "Alert Cancelled",
+          description: "Your request for help has been cancelled.",
+        });
+      } catch (error) {
+        console.error("Error cancelling alert:", error);
+        toast({
+          variant: "destructive",
+          title: "Cancellation Failed",
+          description: "Could not cancel the alert. Please try again.",
+        });
+      }
+    }
+    resetSimulation();
   };
 
   const resetSimulation = () => {
@@ -149,6 +201,7 @@ export function AlerterView() {
     setAlertData(null);
     setSelectedGender(null);
     setLocation(null);
+    setActiveAlertId(null);
   };
   
   if (alertStatus === "idle") {
@@ -291,7 +344,7 @@ export function AlerterView() {
                 We are searching for the nearest available {selectedGender} responder. Please wait a moment.
             </p>
         </div>
-        <Button variant="outline" onClick={resetSimulation}>
+        <Button variant="outline" onClick={cancelAlert}>
             <XCircle className="mr-2 h-4 w-4" />
             Cancel Alert
         </Button>

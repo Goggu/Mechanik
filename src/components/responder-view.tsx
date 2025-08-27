@@ -4,6 +4,8 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Siren, MapPin, Loader2, ShieldPlus } from "lucide-react";
+import { collection, query, where, onSnapshot, doc, runTransaction, deleteDoc, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,116 +22,114 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
-type AlertStatus = "idle" | "routing" | "received" | "accepted";
+type AlertStatus = "idle" | "received" | "accepted" | "error";
 type Geolocation = {
   latitude: number;
   longitude: number;
 };
 type Gender = 'male' | 'female' | 'trans';
-type AlertData = {
-  phone: string;
-  location: Geolocation;
-  gender: Gender;
-};
 
-// This is a global listener for our simulation
-let alertListener: ((gender: Gender) => void) | null = null;
+interface AlertDocument {
+    id: string;
+    phone: string;
+    location: Geolocation;
+    gender: Gender;
+    createdAt: Timestamp;
+    status: 'pending' | 'accepted';
+    responderId?: string;
+}
 
 export function ResponderView() {
   const { user } = useAuth();
-  const [alertStatus, setAlertStatus] = useState<AlertStatus>("idle");
+  const [status, setStatus] = useState<AlertStatus>("idle");
+  const [receivedAlert, setReceivedAlert] = useState<AlertDocument | null>(null);
   const { toast } = useToast();
 
-  // Mock data for a received alert
-  const [alertData, setAlertData] = useState<AlertData>({
-      phone: '(555) 123-4567',
-      location: { latitude: 34.0522, longitude: -118.2437 },
-      gender: 'female',
-  });
-
-  // Effect for partner users to listen for alerts
   useEffect(() => {
-    if (user?.userType === 'partner') {
-      const partnerGender = user.partnerType;
-      const handleAlert = (alertGender: Gender) => {
-        if (partnerGender === alertGender) {
-          setAlertStatus("received");
+    if (user?.userType !== 'partner' || !user.partnerType) return;
+
+    const q = query(
+      collection(db, "alerts"),
+      where("gender", "==", user.partnerType),
+      where("status", "==", "pending")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            // If there are no pending alerts for this user, or if the alert they were viewing was taken
+            if (status === 'received') {
+                setReceivedAlert(null);
+                setStatus('idle');
+            }
+            return;
         }
-      };
 
-      alertListener = handleAlert;
+        // In a real app, you'd find the *nearest* alert. For simulation, we'll take the oldest.
+        const alerts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AlertDocument));
+        alerts.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+        const newestAlert = alerts[0];
 
-      // --- Simulation Trigger ---
-      // In a real app, this would be a WebSocket or Firestore listener.
-      // Here, we just simulate an alert coming in for demo purposes.
-      const demoTimer = setTimeout(() => {
-          if (user.partnerType) {
-            handleAlert(user.partnerType);
-          }
-      }, 7000);
-      // --- End Simulation Trigger ---
-
-      // Cleanup listener
-      return () => {
-        alertListener = null;
-        clearTimeout(demoTimer);
-      };
-    }
-  }, [user]);
-
-  // Effect to simulate alert routing timeouts
-  useEffect(() => {
-    if (alertStatus === "routing") {
-      const timer = setTimeout(() => {
-        // If a partner has subscribed, trigger their listener
-        if (alertListener && user?.partnerType) {
-            alertListener(user.partnerType);
-            setAlertStatus('received'); // Go back to received state for next user
+        // Only show a new alert if we are idle
+        if (status === 'idle') {
+            setReceivedAlert(newestAlert);
+            setStatus("received");
         }
-      }, 2500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [alertStatus, user?.partnerType]);
-
-  const handleAccept = () => {
-    setAlertStatus("accepted");
-    toast({
-      title: "Help is on the way!",
-      description: "Please proceed to the location shown.",
     });
+
+    return () => unsubscribe();
+  }, [user, status]);
+
+  const handleAccept = async () => {
+    if (!receivedAlert || !user) return;
+
+    const alertRef = doc(db, "alerts", receivedAlert.id);
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const alertDoc = await transaction.get(alertRef);
+            if (!alertDoc.exists() || alertDoc.data().status !== 'pending') {
+                throw new Error("Alert is no longer available.");
+            }
+            transaction.update(alertRef, { status: 'accepted', responderId: user.uid });
+        });
+        
+        setStatus("accepted");
+        toast({
+            title: "Help is on the way!",
+            description: "Please proceed to the location shown.",
+        });
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Alert Taken",
+            description: error.message || "This alert was accepted by another responder.",
+        });
+        setStatus("idle");
+        setReceivedAlert(null);
+    }
   };
 
   const handleDecline = () => {
-    setAlertStatus("routing");
+    // Just close the dialog, the listener will keep watching for other alerts.
+    // In a more complex system, you might mark this alert so it's not shown to this user again.
+    setStatus("idle");
+    setReceivedAlert(null);
     toast({
       title: "Alert Declined",
-      description: "Rerouting to the next nearest user. Please wait.",
+      description: "You have declined the alert. You will be notified of the next available one.",
     });
   };
 
-  const resetSimulation = () => {
-    setAlertStatus("idle");
-    // In a real app you might want to re-trigger the listener simulation
+  const resetSimulation = async () => {
+    if (receivedAlert) {
+      // The person who accepted the alert is responsible for deleting it.
+      await deleteDoc(doc(db, "alerts", receivedAlert.id));
+    }
+    setStatus("idle");
+    setReceivedAlert(null);
   };
 
-  if (alertStatus === "routing") {
-    return (
-        <div className="flex flex-col items-center gap-6 text-center">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        <div className="space-y-2">
-            <h2 className="text-2xl font-semibold">
-                Finding Next Responder...
-            </h2>
-            <p className="text-muted-foreground max-w-sm">
-                You have declined the alert. We are searching for the next nearest responder.
-            </p>
-        </div>
-        </div>
-    )
-  }
-
-  if (alertStatus === "accepted") {
+  if (status === "accepted" && receivedAlert) {
     return (
       <Card className="max-w-2xl mx-auto shadow-xl animate-in fade-in-50 duration-500">
         <CardHeader>
@@ -156,12 +156,12 @@ export function ResponderView() {
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
             <div className="text-sm bg-muted p-3 rounded-md font-mono">
               <p className="font-bold text-muted-foreground">Location:</p>
-              Lat: {alertData.location.latitude.toFixed(6)}, <br />
-              Lon: {alertData.location.longitude.toFixed(6)}
+              Lat: {receivedAlert.location.latitude.toFixed(6)}, <br />
+              Lon: {receivedAlert.location.longitude.toFixed(6)}
             </div>
             <div className="text-sm bg-muted p-3 rounded-md font-mono">
               <p className="font-bold text-muted-foreground">Contact:</p>
-              {alertData.phone}
+              {receivedAlert.phone}
             </div>
           </div>
           <Button
@@ -195,7 +195,7 @@ export function ResponderView() {
           </CardContent>
       </Card>
 
-      <AlertDialog open={alertStatus === "received"}>
+      <AlertDialog open={status === "received"}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-3">
