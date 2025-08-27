@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Languages, Menu, LogOut } from "lucide-react";
+import { Languages, Menu, LogOut, UserCheck } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
+import { Separator } from "./ui/separator";
 
 export function Header() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -30,6 +31,14 @@ export function Header() {
   const handleLinkClick = () => {
     setIsSheetOpen(false);
   };
+  
+  const getUserTypeDisplay = () => {
+    if (!user) return null;
+    if (user.userType === 'partner') {
+      return `Partner: ${user.partnerType}`;
+    }
+    return 'Public User';
+  }
 
   return (
     <header className="p-4 border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -60,7 +69,7 @@ export function Header() {
                 <Menu />
               </Button>
             </SheetTrigger>
-            <SheetContent>
+            <SheetContent className="flex flex-col">
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
@@ -96,6 +105,15 @@ export function Header() {
                   </Button>
                 )}
               </nav>
+              {user && (
+                 <div className="mt-auto pt-4">
+                  <Separator />
+                   <div className="flex items-center gap-3 mt-4 text-sm text-muted-foreground">
+                    <UserCheck className="h-5 w-5" />
+                    <p className="capitalize font-medium">{getUserTypeDisplay()}</p>
+                   </div>
+                 </div>
+              )}
             </SheetContent>
           </Sheet>
         </div>
