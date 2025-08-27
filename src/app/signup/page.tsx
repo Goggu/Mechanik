@@ -70,10 +70,6 @@ export default function SignUpPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
         await signup(values.email, values.password, values.userType, values.partnerType);
-        toast({
-            title: "Account Created!",
-            description: "You have successfully signed up.",
-        });
         router.push("/");
     } catch (error: any) {
         console.error("Signup error:", error);

@@ -94,10 +94,6 @@ export function ResponderView() {
         });
         
         setStatus("accepted");
-        toast({
-            title: "Help is on the way!",
-            description: "Please proceed to the location shown.",
-        });
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -114,10 +110,6 @@ export function ResponderView() {
     // In a more complex system, you might mark this alert so it's not shown to this user again.
     setStatus("idle");
     setReceivedAlert(null);
-    toast({
-      title: "Alert Declined",
-      description: "You have declined the alert. You will be notified of the next available one.",
-    });
   };
 
   const resetSimulation = async () => {

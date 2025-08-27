@@ -158,10 +158,6 @@ export function AlerterView() {
             createdAt: serverTimestamp(),
         });
         setActiveAlertId(docRef.id);
-        toast({
-            title: "Alert Sent!",
-            description: "We are notifying the nearest available user.",
-        });
     } catch (error) {
         console.error("Error sending alert:", error);
         toast({
@@ -180,10 +176,6 @@ export function AlerterView() {
     if (activeAlertId) {
       try {
         await deleteDoc(doc(db, "alerts", activeAlertId));
-        toast({
-          title: "Alert Cancelled",
-          description: "Your request for help has been cancelled.",
-        });
       } catch (error) {
         console.error("Error cancelling alert:", error);
         toast({
