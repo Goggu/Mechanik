@@ -50,10 +50,6 @@ export default function SignInPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       await login(values.email, values.password);
-      toast({
-        title: "Success!",
-        description: "You have been signed in.",
-      });
       router.push("/");
     } catch (error: any) {
       console.error("Sign in error:", error);
