@@ -201,32 +201,30 @@ export default function Home() {
     // If user is not logged in
     if (!user) {
       return (
-         <Card className="max-w-xl mx-auto animate-in fade-in-50 duration-500">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                    <Logo className="h-8 w-8 text-primary"/>
-                    Welcome to HelpNow
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <p className="text-muted-foreground">
-                    Your community-based safety network. Please sign in or create an account to send or receive alerts.
-                </p>
-                <div className="flex gap-4">
-                     <Button asChild className="w-full">
-                        <Link href="/signin">
-                            <LogIn />
-                            Sign In
-                        </Link>
-                    </Button>
-                    <Button asChild variant="secondary" className="w-full">
-                        <Link href="/signup">
-                            Create Account
-                        </Link>
-                    </Button>
-                </div>
-            </CardContent>
-         </Card>
+        <div className="flex flex-col items-center gap-8 animate-in fade-in-50 duration-500">
+          <ShieldPlus className="h-24 w-24 text-primary/80" />
+          <div className="max-w-xl mx-auto space-y-2 text-center">
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+              Your Community Safety Net
+            </h2>
+            <p className="text-muted-foreground">
+              Please sign in or create an account to send or receive alerts. Join HelpNow to be a part of a network that cares.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+             <Button asChild className="w-full" size="lg">
+                <Link href="/signin">
+                    <LogIn />
+                    Sign In
+                </Link>
+            </Button>
+            <Button asChild variant="secondary" className="w-full" size="lg">
+                <Link href="/signup">
+                    Create Account
+                </Link>
+            </Button>
+          </div>
+        </div>
       );
     }
 
@@ -472,25 +470,5 @@ export default function Home() {
         </AlertDialogContent>
       </AlertDialog>
     </>
-  );
-}
-
-// Simple Logo component to be used in the logged-out view
-function Logo(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      <path d="M12 8v8" />
-      <path d="M8 12h8" />
-    </svg>
   );
 }
