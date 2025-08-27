@@ -25,13 +25,13 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
-             <Button asChild className="w-full" size="lg">
+             <Button asChild className="w-full rounded-full" size="lg">
                 <Link href="/signin">
                     <LogIn />
                     Sign In
                 </Link>
             </Button>
-            <Button asChild variant="secondary" className="w-full" size="lg">
+            <Button asChild variant="secondary" className="w-full rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
                 <Link href="/signup">
                     Create Account
                 </Link>
