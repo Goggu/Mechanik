@@ -7,7 +7,7 @@ import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users, LogIn, CircleHelp } from "lucide-react";
+import { Phone, Siren, MapPin, Loader2, ShieldPlus, User, UserRound, Users, LogIn, CircleHelp, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -396,16 +396,22 @@ export default function Home() {
 
       if (alertStatus === "sent" || alertStatus === "routing") {
          return (
-          <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex flex-col items-center gap-6 text-center">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            <h2 className="text-2xl font-semibold">
-              {alertStatus === "sent"
-                ? "Contacting Help..."
-                : "Finding Next Responder..."}
-            </h2>
-            <p className="text-muted-foreground max-w-sm">
-                We are searching for the nearest available {selectedGender} responder. Please wait a moment.
-            </p>
+            <div className="space-y-2">
+                <h2 className="text-2xl font-semibold">
+                {alertStatus === "sent"
+                    ? "Contacting Help..."
+                    : "Finding Next Responder..."}
+                </h2>
+                <p className="text-muted-foreground max-w-sm">
+                    We are searching for the nearest available {selectedGender} responder. Please wait a moment.
+                </p>
+            </div>
+            <Button variant="outline" onClick={resetSimulation}>
+                <XCircle className="mr-2 h-4 w-4" />
+                Cancel Alert
+            </Button>
           </div>
         );
       }
@@ -497,5 +503,3 @@ export default function Home() {
     </>
   );
 }
-
-    
