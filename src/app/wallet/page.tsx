@@ -2,10 +2,11 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { doc, getDoc, runTransaction } from "firebase/firestore";
+import { doc, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Wallet, Landmark, ArrowLeftRight, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const formSchema = z.object({
   amount: z.coerce
@@ -29,6 +37,9 @@ export default function WalletPage() {
   const { user, setUserData } = useAuth();
   const { toast } = useToast();
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
+  const [stagedAmount, setStagedAmount] = useState<number | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,11 +48,28 @@ export default function WalletPage() {
     },
   });
 
-  const handleTransaction = async (values: z.infer<typeof formSchema>) => {
-    if (!user || !transactionType) return;
+  const handleWithdrawal = async (values: z.infer<typeof formSchema>) => {
+     if (!user) return;
+     setIsProcessing(true);
+     await processTransaction(values.amount, 'withdraw');
+     setIsProcessing(false);
+  }
+
+  const handleDepositInitiation = (values: z.infer<typeof formSchema>) => {
+    setStagedAmount(values.amount);
+  }
+
+  const handleFinalizeDeposit = async () => {
+    if (stagedAmount === null) return;
+    setIsProcessing(true);
+    await processTransaction(stagedAmount, 'deposit');
+    setIsProcessing(false);
+  }
+
+  const processTransaction = async (amount: number, type: TransactionType) => {
+    if (!user) return;
 
     const userRef = doc(db, "users", user.uid);
-    const amount = values.amount;
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -53,7 +81,7 @@ export default function WalletPage() {
         const currentBalance = userDoc.data().walletBalance || 0;
         let newBalance = currentBalance;
 
-        if (transactionType === "deposit") {
+        if (type === "deposit") {
           newBalance += amount;
         } else {
           if (currentBalance < amount) {
@@ -65,12 +93,12 @@ export default function WalletPage() {
         transaction.update(userRef, { walletBalance: newBalance });
       });
 
-      // Update local user state
-      setUserData((prevUser) => prevUser ? { ...prevUser, walletBalance: (prevUser.walletBalance || 0) + (transactionType === 'deposit' ? amount : -amount) } : null);
+      const newBalance = (user.walletBalance || 0) + (type === 'deposit' ? amount : -amount);
+      setUserData((prevUser) => prevUser ? { ...prevUser, walletBalance: newBalance } : null);
 
       toast({
         title: "Transaction Successful",
-        description: `Your new balance is ₹${((user.walletBalance || 0) + (transactionType === 'deposit' ? amount : -amount)).toFixed(2)}.`,
+        description: `Your new balance is ₹${newBalance.toFixed(2)}.`,
       });
 
     } catch (error: any) {
@@ -82,8 +110,17 @@ export default function WalletPage() {
     } finally {
       form.reset();
       setTransactionType(null);
+      setStagedAmount(null);
     }
   };
+  
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (transactionType === 'deposit') {
+      handleDepositInitiation(values);
+    } else if (transactionType === 'withdraw') {
+      handleWithdrawal(values);
+    }
+  }
 
   const currentBalance = user?.walletBalance?.toFixed(2) ?? "0.00";
 
@@ -115,7 +152,7 @@ export default function WalletPage() {
             <div className="animate-in fade-in-50 duration-300">
               <h3 className="text-lg font-medium text-center mb-4 capitalize">{transactionType} Funds</h3>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleTransaction)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="amount"
@@ -156,6 +193,28 @@ export default function WalletPage() {
           )}
         </CardContent>
       </Card>
+      
+      <Dialog open={stagedAmount !== null} onOpenChange={(isOpen) => !isOpen && setStagedAmount(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose Payment Method</DialogTitle>
+            <DialogDescription>
+              You are depositing <span className="font-bold">₹{stagedAmount}</span>. Select a method to complete the payment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Button variant="outline" className="h-16 justify-start gap-4" onClick={handleFinalizeDeposit} disabled={isProcessing}>
+               {isProcessing ? <Loader2 className="animate-spin" /> : <Image src="https://placehold.co/40x40?text=P" alt="Paytm Logo" width={40} height={40} />}
+              <span className="text-lg font-semibold">Pay with Paytm</span>
+            </Button>
+            <Button variant="outline" className="h-16 justify-start gap-4" onClick={handleFinalizeDeposit} disabled={isProcessing}>
+               {isProcessing ? <Loader2 className="animate-spin" /> : <Image src="https://placehold.co/40x40?text=G" alt="Google Pay Logo" width={40} height={40} />}
+              <span className="text-lg font-semibold">Pay with Google Pay</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
