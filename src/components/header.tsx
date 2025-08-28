@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Languages, Menu, LogOut, UserCheck } from "lucide-react";
+import { Languages, Menu, LogOut, UserCheck, Home, Wallet, User as UserIcon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -24,6 +24,15 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "./ui/separator";
 
+const NavLink = ({ href, onClick, children }: { href: string; onClick: () => void; children: React.ReactNode }) => (
+    <Link href={href} passHref>
+        <Button variant="ghost" className="w-full justify-start text-lg font-medium" onClick={onClick}>
+            {children}
+        </Button>
+    </Link>
+);
+
+
 export function Header() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { user, logout } = useAuth();
@@ -38,6 +47,48 @@ export function Header() {
       return `Partner: ${user.partnerType}`;
     }
     return 'Public User';
+  }
+  
+  const renderNavLinks = () => {
+    if (!user) {
+        return (
+            <>
+                <NavLink href="/signin" onClick={handleLinkClick}>
+                    <LogOut className="mr-2 h-5 w-5" /> Login
+                </NavLink>
+                <NavLink href="/signup" onClick={handleLinkClick}>
+                    <UserIcon className="mr-2 h-5 w-5" /> Signup
+                </NavLink>
+            </>
+        )
+    }
+    
+    return (
+        <>
+            <NavLink href="/" onClick={handleLinkClick}>
+                <Home className="mr-2 h-5 w-5" /> Home
+            </NavLink>
+             {user.userType === 'partner' && (
+                <NavLink href="/wallet" onClick={handleLinkClick}>
+                    <Wallet className="mr-2 h-5 w-5" /> Wallet
+                </NavLink>
+            )}
+            <NavLink href="/account" onClick={handleLinkClick}>
+                <UserIcon className="mr-2 h-5 w-5" /> Account
+            </NavLink>
+            <Button
+                variant="ghost"
+                className="w-full justify-start text-lg font-medium hover:text-destructive"
+                onClick={() => {
+                  logout();
+                  handleLinkClick();
+                }}
+              >
+                <LogOut className="mr-2 h-5 w-5" />
+                Logout
+            </Button>
+        </>
+    )
   }
 
   return (
@@ -69,41 +120,12 @@ export function Header() {
                 <Menu />
               </Button>
             </SheetTrigger>
-            <SheetContent className="flex flex-col">
+            <SheetContent className="flex flex-col w-80">
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col gap-4 mt-8">
-                {!user ? (
-                  <>
-                    <Link
-                      href="/signin"
-                      className="text-lg font-medium hover:text-primary"
-                      onClick={handleLinkClick}
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      href="/signup"
-                      className="text-lg font-medium hover:text-primary"
-                      onClick={handleLinkClick}
-                    >
-                      Signup
-                    </Link>
-                  </>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    className="justify-start p-0 text-lg font-medium hover:text-destructive"
-                    onClick={() => {
-                      logout();
-                      handleLinkClick();
-                    }}
-                  >
-                    <LogOut className="mr-2 h-5 w-5" />
-                    Logout
-                  </Button>
-                )}
+              <nav className="flex flex-col gap-2 mt-8">
+                {renderNavLinks()}
               </nav>
               {user && (
                  <div className="mt-auto pt-4">
