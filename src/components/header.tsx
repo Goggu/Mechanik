@@ -120,7 +120,10 @@ export function Header() {
                 <Menu />
               </Button>
             </SheetTrigger>
-            <SheetContent className="flex flex-col w-64 px-4">
+            <SheetContent className="flex flex-col w-64 px-2">
+              <SheetHeader>
+                  <SheetTitle className="sr-only">Menu</SheetTitle>
+              </SheetHeader>
               <nav className="flex flex-col gap-2 mt-8">
                 {renderNavLinks()}
               </nav>
