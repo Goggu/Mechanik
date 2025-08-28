@@ -23,6 +23,7 @@ import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "./ui/separator";
+import { Badge } from "./ui/badge";
 
 const NavLink = ({ href, onClick, children }: { href: string; onClick: () => void; children: React.ReactNode }) => (
     <Link href={href} passHref>
@@ -69,9 +70,16 @@ export function Header() {
                 <Home className="mr-2 h-5 w-5" /> Home
             </NavLink>
              {user.userType === 'partner' && (
-                <NavLink href="/wallet" onClick={handleLinkClick}>
-                    <Wallet className="mr-2 h-5 w-5" /> Wallet
-                </NavLink>
+                <div className="relative">
+                    <NavLink href="/wallet" onClick={handleLinkClick}>
+                        <Wallet className="mr-2 h-5 w-5" /> Wallet
+                    </NavLink>
+                    {user.walletBalance !== undefined && (
+                        <Badge variant="secondary" className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                            ${user.walletBalance.toFixed(2)}
+                        </Badge>
+                    )}
+                </div>
             )}
             <NavLink href="/account" onClick={handleLinkClick}>
                 <UserIcon className="mr-2 h-5 w-5" /> Account

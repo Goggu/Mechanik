@@ -22,6 +22,7 @@ interface User {
   email: string | null;
   userType?: UserType;
   partnerType?: PartnerType;
+  walletBalance?: number;
 }
 
 interface AuthContextType {
@@ -35,6 +36,7 @@ interface AuthContextType {
   ) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  setUserData: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,6 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             email: firebaseUser.email,
             userType: userData.type,
             partnerType: userData['sub-type'],
+            walletBalance: userData.walletBalance,
           });
         } else {
             // This might happen if the user was created in auth but not in firestore
@@ -92,8 +95,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         type: userType,
     };
 
-    if (userType === 'partner' && partnerType) {
-        userDataToSave['sub-type'] = partnerType;
+    if (userType === 'partner') {
+        userDataToSave.walletBalance = 100.00; // Starting balance
+        if (partnerType) {
+            userDataToSave['sub-type'] = partnerType;
+        }
     }
 
     await setDoc(userDocRef, userDataToSave);
@@ -103,11 +109,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email: firebaseUser.email,
       userType: userType,
       partnerType: partnerType,
+      walletBalance: userType === 'partner' ? 100.00 : undefined,
     });
   };
 
   const login = async (email: string, password: string) => {
-    const userCredential = await signInWithEmailAndPassword(
+    await signInWithEmailAndPassword(
       auth,
       email,
       password
@@ -128,6 +135,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signup,
     login,
     logout,
+    setUserData: setUser,
   };
 
   if (loading) {
