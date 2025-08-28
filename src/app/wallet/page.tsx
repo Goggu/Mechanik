@@ -96,11 +96,6 @@ export default function WalletPage() {
       const newBalance = (user.walletBalance || 0) + (type === 'deposit' ? amount : -amount);
       setUserData((prevUser) => prevUser ? { ...prevUser, walletBalance: newBalance } : null);
 
-      toast({
-        title: "Transaction Successful",
-        description: `Your new balance is ₹${newBalance.toFixed(2)}.`,
-      });
-
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -217,4 +212,3 @@ export default function WalletPage() {
     </div>
   );
 }
-
