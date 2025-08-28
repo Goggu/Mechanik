@@ -76,7 +76,7 @@ export function Header() {
                     </NavLink>
                     {user.walletBalance !== undefined && (
                         <Badge variant="secondary" className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                            ${user.walletBalance.toFixed(2)}
+                            ₹{user.walletBalance.toFixed(2)}
                         </Badge>
                     )}
                 </div>

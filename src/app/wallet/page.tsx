@@ -19,7 +19,7 @@ const formSchema = z.object({
   amount: z.coerce
     .number()
     .positive("Amount must be positive.")
-    .min(0.01, "Amount must be at least $0.01."),
+    .min(1, "Amount must be at least ₹1."),
 });
 
 type TransactionType = "deposit" | "withdraw";
@@ -69,7 +69,7 @@ export default function WalletPage() {
 
       toast({
         title: "Transaction Successful",
-        description: `Your new balance is $${((user.walletBalance || 0) + (transactionType === 'deposit' ? amount : -amount)).toFixed(2)}.`,
+        description: `Your new balance is ₹${((user.walletBalance || 0) + (transactionType === 'deposit' ? amount : -amount)).toFixed(2)}.`,
       });
 
     } catch (error: any) {
@@ -98,7 +98,7 @@ export default function WalletPage() {
         <CardContent className="space-y-6">
           <div className="text-center">
             <p className="text-sm text-muted-foreground">Current Balance</p>
-            <p className="text-4xl font-bold tracking-tight">${currentBalance}</p>
+            <p className="text-4xl font-bold tracking-tight">₹{currentBalance}</p>
           </div>
           
           {!transactionType ? (
@@ -123,7 +123,7 @@ export default function WalletPage() {
                         <FormLabel>Amount</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
                             <Input
                               type="number"
                               step="0.01"
