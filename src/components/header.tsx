@@ -120,7 +120,7 @@ export function Header() {
                 <Menu />
               </Button>
             </SheetTrigger>
-            <SheetContent className="flex flex-col w-64">
+            <SheetContent className="flex flex-col w-64 px-4">
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
