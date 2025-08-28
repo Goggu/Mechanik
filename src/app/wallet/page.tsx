@@ -17,8 +17,9 @@ import { Wallet, Landmark, ArrowLeftRight, Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   amount: z.coerce
-    .number()
-    .positive("Amount must be positive.")
+    .number({ invalid_type_error: "Amount must be a whole number." })
+    .int("Amount must be a whole number.")
+    .positive("Amount must be a positive number.")
     .min(1, "Amount must be at least ₹1."),
 });
 
@@ -32,7 +33,7 @@ export default function WalletPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      amount: "" as any,
+      amount: "",
     },
   });
 
@@ -126,8 +127,8 @@ export default function WalletPage() {
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
                             <Input
                               type="number"
-                              step="0.01"
-                              placeholder="0.00"
+                              step="1"
+                              placeholder="0"
                               {...field}
                               className="pl-7"
                             />
