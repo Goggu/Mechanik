@@ -96,6 +96,12 @@ export default function WalletPage() {
       const newBalance = (user.walletBalance || 0) + (type === 'deposit' ? amount : -amount);
       setUserData((prevUser) => prevUser ? { ...prevUser, walletBalance: newBalance } : null);
 
+      toast({
+        variant: "success",
+        title: "Transaction Successful",
+        duration: 1000,
+      });
+
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -103,7 +109,7 @@ export default function WalletPage() {
         description: error.message,
       });
     } finally {
-      form.reset();
+      form.reset({ amount: "" });
       setTransactionType(null);
       setStagedAmount(null);
     }
@@ -178,7 +184,7 @@ export default function WalletPage() {
                         `Confirm ${transactionType}`
                       )}
                     </Button>
-                    <Button variant="outline" className="w-full" onClick={() => { setTransactionType(null); form.reset(); }}>
+                    <Button variant="outline" className="w-full" onClick={() => { setTransactionType(null); form.reset({ amount: "" }); }}>
                       Cancel
                     </Button>
                   </CardFooter>

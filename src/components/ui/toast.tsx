@@ -1,9 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
+import { X, CheckCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -32,6 +33,7 @@ const toastVariants = cva(
         default: "border bg-background text-foreground",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
+        success: "success group border-green-500/50 bg-success text-success-foreground",
       },
     },
     defaultVariants: {
@@ -55,6 +57,31 @@ const Toast = React.forwardRef<
 })
 Toast.displayName = ToastPrimitives.Root.displayName
 
+const SuccessToast = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Root>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
+    VariantProps<typeof toastVariants>
+>(({ className, variant, ...props }, ref) => {
+  return (
+    <ToastPrimitives.Root
+      ref={ref}
+      className={cn(toastVariants({ variant: 'success' }), className)}
+      {...props}
+    >
+      <div className="flex items-center gap-3">
+        <CheckCircle className="h-6 w-6" />
+        <div className="grid gap-1">
+            {props.title && <ToastTitle>{props.title}</ToastTitle>}
+            {props.description && <ToastDescription>{props.description}</ToastDescription>}
+        </div>
+      </div>
+      <ToastClose />
+    </ToastPrimitives.Root>
+  )
+})
+SuccessToast.displayName = "SuccessToast"
+
+
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
@@ -77,7 +104,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600 group-[.success]:text-green-300 group-[.success]:hover:text-green-50",
       className
     )}
     toast-close=""
@@ -126,4 +153,5 @@ export {
   ToastDescription,
   ToastClose,
   ToastAction,
+  SuccessToast
 }
