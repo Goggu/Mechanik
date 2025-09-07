@@ -83,12 +83,14 @@ export default function Home() {
     defaultValues: { otp: "" },
   });
 
+  // Effect to proceed with alert creation after successful login.
   useEffect(() => {
-    if (user && showAuthModal) {
+    if (user && showAuthModal && selectedGender) {
       setShowAuthModal(false);
-      handleSendAlertClick(); // Re-trigger alert creation after successful login
+      // Now that the user is authenticated, get the location.
+      getLocationAndCreateAlert();
     }
-  }, [user, showAuthModal]);
+  }, [user, showAuthModal, selectedGender]);
 
 
   useEffect(() => {
@@ -101,6 +103,7 @@ export default function Home() {
           setAlertStatus("accepted");
         }
       } else {
+        // If doc is deleted and we haven't been accepted, it was cancelled.
         if (alertStatus !== 'accepted') {
            resetSimulation();
         }
@@ -133,13 +136,14 @@ export default function Home() {
     setIsSubmitting(true);
     try {
       await confirmOtp(confirmationResult, values.otp);
-      toast({
+      // onAuthStateChanged in useAuth will set the user.
+      // The useEffect hook will then close the modal and trigger alert creation.
+       toast({
         variant: "success",
         title: "Phone Verified",
-        description: "You are now signed in.",
+        description: "You are now signed in. Creating your alert...",
         duration: 3000,
       });
-      // The useEffect hook will handle closing the modal and re-triggering the alert
     } catch (error) {
       console.error("Error verifying OTP:", error);
       toast({
@@ -158,7 +162,7 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "Selection Required",
-        description: "Please select a gender option before sending an alert.",
+        description: "Please select a responder type before sending an alert.",
       });
       return;
     }
@@ -168,6 +172,11 @@ export default function Home() {
         return;
     }
     
+    // If user is already logged in, proceed directly.
+    getLocationAndCreateAlert();
+  };
+
+  const getLocationAndCreateAlert = () => {
     if (!navigator.geolocation) {
       toast({
         variant: "destructive",
@@ -178,6 +187,8 @@ export default function Home() {
     }
 
     setIsSubmitting(true);
+    setAlertStatus("sending"); // Indicate we are starting the process
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
@@ -187,26 +198,28 @@ export default function Home() {
       },
       (error) => {
         setIsSubmitting(false);
+        setAlertStatus("idle");
         toast({
           variant: "destructive",
           title: "Geolocation Error",
           description:
             error.code === error.PERMISSION_DENIED
               ? "Please allow location access to send an alert."
-              : error.message,
+              : "Could not get your location.",
         });
       }
     );
-  };
+  }
 
   const handleAlertCreation = async (currentLocation: Geolocation) => {
      if (!selectedGender || !user || !user.phoneNumber) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "User authentication and gender selection are required.",
+        description: "User authentication, gender selection, and location are required.",
       });
       setIsSubmitting(false);
+      setAlertStatus("idle");
       return;
     }
     
@@ -242,6 +255,11 @@ export default function Home() {
     if (activeAlertId) {
       try {
         await deleteDoc(doc(db, "alerts", activeAlertId));
+        toast({
+            title: "Alert Cancelled",
+            description: "Your alert has been successfully cancelled.",
+            duration: 3000
+        });
       } catch (error) {
         console.error("Error cancelling alert:", error);
         toast({
@@ -260,6 +278,7 @@ export default function Home() {
     setSelectedGender(null);
     setLocation(null);
     setActiveAlertId(null);
+    setIsSubmitting(false);
   };
   
   if (loading) {
@@ -446,10 +465,21 @@ export default function Home() {
           onClick={handleSendAlertClick}
           disabled={isSubmitting}
         >
-          {isSubmitting && alertStatus !== "sent" ? <Loader2 className="animate-spin h-8 w-8" /> : <Siren className="mr-4 h-8 w-8" />}
-          {isSubmitting && alertStatus !== "sent" ? "Please wait..." : "SEND ALERT"}
+          {alertStatus === 'sending' ? (
+            <>
+              <Loader2 className="animate-spin h-8 w-8" />
+              Please wait...
+            </>
+          ) : (
+            <>
+              <Siren className="mr-4 h-8 w-8" />
+              SEND ALERT
+            </>
+          )}
         </Button>
       </div>
     </div>
   );
 }
+
+    
