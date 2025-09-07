@@ -35,12 +35,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       if (firebaseUser && firebaseUser.phoneNumber) {
         const userRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userRef);
 
         if (!userDoc.exists()) {
-          // Create a new user document if it doesn't exist
           await setDoc(userRef, {
             uid: firebaseUser.uid,
             phoneNumber: firebaseUser.phoneNumber,
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logout,
   };
 
-  if (loading && !user) {
+  if (loading && user === undefined) {
     return (
       <div className="flex items-center justify-center h-screen w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

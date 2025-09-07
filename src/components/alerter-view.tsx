@@ -22,6 +22,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -62,6 +69,7 @@ export function AlerterView() {
   const [location, setLocation] = useState<Geolocation | null>(null);
   const { toast } = useToast();
 
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [phoneNumber, setPhoneNumber] = useState<string>("");
 
@@ -74,6 +82,13 @@ export function AlerterView() {
     resolver: zodResolver(otpFormSchema),
     defaultValues: { otp: "" },
   });
+
+  useEffect(() => {
+    if (user && showAuthModal) {
+      setShowAuthModal(false);
+      handleSendAlertClick(); // Re-trigger alert creation after successful login
+    }
+  }, [user, showAuthModal]);
 
 
   useEffect(() => {
@@ -124,7 +139,7 @@ export function AlerterView() {
         description: "You are now signed in.",
         duration: 3000,
       });
-      // The useAuth hook will handle the user state change
+      // The useEffect hook will handle closing the modal and re-triggering the alert
     } catch (error) {
       console.error("Error verifying OTP:", error);
       toast({
@@ -146,6 +161,11 @@ export function AlerterView() {
         description: "Please select a gender option before sending an alert.",
       });
       return;
+    }
+
+    if (!user) {
+        setShowAuthModal(true);
+        return;
     }
     
     if (!navigator.geolocation) {
@@ -250,140 +270,6 @@ export function AlerterView() {
     )
   }
 
-  if (!user) {
-    return (
-      <div className="w-full max-w-sm mx-auto">
-      {!confirmationResult ? (
-        <Card className="animate-in fade-in-50 duration-500">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Phone /> Get Started
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">Enter your phone number to sign in or create an account.</p>
-            <Form {...phoneForm}>
-              <form onSubmit={phoneForm.handleSubmit(handleSendOtp)} className="space-y-4">
-                <FormField
-                  control={phoneForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="sr-only">Phone Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter phone number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={isSubmitting} className="w-full">
-                  {isSubmitting ? <Loader2 className="animate-spin" /> : "Send OTP"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      ) : (
-         <Card className="animate-in fade-in-50 duration-500">
-           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <KeyRound /> Verify OTP
-            </CardTitle>
-          </CardHeader>
-           <CardContent>
-            <p className="text-muted-foreground mb-4">
-              Enter the 6-digit code sent to {phoneNumber}.
-            </p>
-            <Form {...otpForm}>
-              <form onSubmit={otpForm.handleSubmit(handleVerifyOtp)} className="space-y-6 flex flex-col items-center">
-                <FormField
-                  control={otpForm.control}
-                  name="otp"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="sr-only">One-Time Password</FormLabel>
-                      <FormControl>
-                        <InputOTP maxLength={6} {...field}>
-                          <InputOTPGroup>
-                            <InputOTPSlot index={0} />
-                            <InputOTPSlot index={1} />
-                            <InputOTPSlot index={2} />
-                            <InputOTPSlot index={3} />
-                            <InputOTPSlot index={4} />
-                            <InputOTPSlot index={5} />
-                          </InputOTPGroup>
-                        </InputOTP>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={isSubmitting} className="w-full">
-                  {isSubmitting ? <Loader2 className="animate-spin" /> : "Verify & Sign In"}
-                </Button>
-              </form>
-            </Form>
-             <Button variant="link" size="sm" className="mt-4" onClick={() => {setConfirmationResult(null); phoneForm.reset()}}>
-                Use a different number
-             </Button>
-          </CardContent>
-        </Card>
-      )}
-      </div>
-    );
-  }
-
-  if (alertStatus === "idle") {
-    return (
-      <div className="flex flex-col items-center gap-8 animate-in fade-in-50 duration-500">
-        <ShieldPlus className="h-24 w-24 text-primary/80" />
-        <div className="max-w-xl mx-auto space-y-2 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
-            Need Assistance?
-          </h2>
-          <p className="text-muted-foreground">
-            Select the type of responder you need and press the button below. Your location will be shared to guide them to you.
-          </p>
-        </div>
-
-        <div className="flex items-center justify-center gap-4">
-          {genderOptions.map(({ id, label, icon: Icon }) => (
-            <div key={id} className="flex flex-col items-center gap-2">
-              <Button
-                variant={selectedGender === id ? 'default' : 'outline'}
-                size="icon"
-                className={cn(
-                  "w-20 h-20 rounded-full transition-all duration-200 shadow-md hover:shadow-lg",
-                  selectedGender === id && "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                )}
-                onClick={() => setSelectedGender(id)}
-              >
-                <Icon className="h-8 w-8" />
-              </Button>
-              <span className="text-sm font-medium text-muted-foreground">{label}</span>
-            </div>
-          ))}
-        </div>
-
-        <Button
-          size="lg"
-          className={cn(
-            "h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl transition-all",
-            "disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none",
-            !selectedGender && "animate-none",
-             selectedGender && !isSubmitting && "animate-pulse-slow"
-          )}
-          onClick={handleSendAlertClick}
-          disabled={!selectedGender || isSubmitting}
-        >
-          {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : <Siren className="mr-4 h-8 w-8" />}
-          {isSubmitting? "Getting Location..." : "SEND ALERT"}
-        </Button>
-      </div>
-    );
-  }
-  
   if (alertStatus === "accepted" && alertData) {
       return (
          <Card className="max-w-md mx-auto text-center animate-in fade-in-50 duration-500">
@@ -430,6 +316,134 @@ export function AlerterView() {
       </div>
     );
   }
-  
-  return null;
+
+  return (
+    <>
+      <Dialog open={showAuthModal} onOpenChange={setShowAuthModal}>
+        <DialogContent>
+          {!confirmationResult ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Phone /> Get Started
+                </DialogTitle>
+                <DialogDescription>
+                  Enter your phone number to continue. We'll send you a one-time code.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...phoneForm}>
+                <form onSubmit={phoneForm.handleSubmit(handleSendOtp)} className="space-y-4">
+                  <FormField
+                    control={phoneForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter phone number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={isSubmitting} className="w-full">
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : "Send Code"}
+                  </Button>
+                </form>
+              </Form>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <KeyRound /> Verify Code
+                </DialogTitle>
+                <DialogDescription>
+                  Enter the 6-digit code sent to {phoneNumber}.
+                </DialogDescription>
+              </DialogHeader>
+               <Form {...otpForm}>
+                <form onSubmit={otpForm.handleSubmit(handleVerifyOtp)} className="space-y-6 flex flex-col items-center">
+                  <FormField
+                    control={otpForm.control}
+                    name="otp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">One-Time Password</FormLabel>
+                        <FormControl>
+                          <InputOTP maxLength={6} {...field}>
+                            <InputOTPGroup>
+                              <InputOTPSlot index={0} />
+                              <InputOTPSlot index={1} />
+                              <InputOTPSlot index={2} />
+                              <InputOTPSlot index={3} />
+                              <InputOTPSlot index={4} />
+                              <InputOTPSlot index={5} />
+                            </InputOTPGroup>
+                          </InputOTP>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={isSubmitting} className="w-full">
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : "Verify & Continue"}
+                  </Button>
+                </form>
+              </Form>
+               <Button variant="link" size="sm" className="mt-2" onClick={() => {setConfirmationResult(null); phoneForm.reset()}}>
+                  Use a different number
+               </Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      <div className="flex flex-col items-center gap-8 animate-in fade-in-50 duration-500">
+        <ShieldPlus className="h-24 w-24 text-primary/80" />
+        <div className="max-w-xl mx-auto space-y-2 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+            Need Assistance?
+          </h2>
+          <p className="text-muted-foreground">
+            Select the type of responder you need and press the button below. Your location will be shared to guide them to you.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-center gap-4">
+          {genderOptions.map(({ id, label, icon: Icon }) => (
+            <div key={id} className="flex flex-col items-center gap-2">
+              <Button
+                variant={selectedGender === id ? 'default' : 'outline'}
+                size="icon"
+                className={cn(
+                  "w-20 h-20 rounded-full transition-all duration-200 shadow-md hover:shadow-lg",
+                  selectedGender === id && "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                )}
+                onClick={() => setSelectedGender(id)}
+              >
+                <Icon className="h-8 w-8" />
+              </Button>
+              <span className="text-sm font-medium text-muted-foreground">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        <Button
+          size="lg"
+          className={cn(
+            "h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl transition-all",
+            "disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none",
+            !selectedGender && "animate-none",
+             selectedGender && !isSubmitting && "animate-pulse-slow"
+          )}
+          onClick={handleSendAlertClick}
+          disabled={isSubmitting}
+        >
+          {isSubmitting && alertStatus !== "sent" ? <Loader2 className="animate-spin h-8 w-8" /> : <Siren className="mr-4 h-8 w-8" />}
+          {isSubmitting && alertStatus !== "sent" ? "Please wait..." : "SEND ALERT"}
+        </Button>
+      </div>
+    </>
+  );
 }
