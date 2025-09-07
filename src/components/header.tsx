@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Languages, Menu, LogOut, UserCheck, Home, User as UserIcon } from "lucide-react";
+import { Languages, Menu, Home, User as UserIcon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -21,8 +21,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useAuth } from "@/hooks/use-auth";
-import { Separator } from "./ui/separator";
 
 const NavLink = ({ href, onClick, children }: { href: string; onClick: () => void; children: React.ReactNode }) => (
     <Link href={href} passHref>
@@ -35,26 +33,12 @@ const NavLink = ({ href, onClick, children }: { href: string; onClick: () => voi
 
 export function Header() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const { user, logout } = useAuth();
 
   const handleLinkClick = () => {
     setIsSheetOpen(false);
   };
   
   const renderNavLinks = () => {
-    if (!user) {
-        return (
-            <>
-                <NavLink href="/signin" onClick={handleLinkClick}>
-                    <LogOut className="mr-2 h-5 w-5" /> Login
-                </NavLink>
-                <NavLink href="/signup" onClick={handleLinkClick}>
-                    <UserIcon className="mr-2 h-5 w-5" /> Signup
-                </NavLink>
-            </>
-        )
-    }
-    
     return (
         <>
             <NavLink href="/" onClick={handleLinkClick}>
@@ -63,17 +47,6 @@ export function Header() {
             <NavLink href="/account" onClick={handleLinkClick}>
                 <UserIcon className="mr-2 h-5 w-5" /> Account
             </NavLink>
-            <Button
-                variant="ghost"
-                className="w-full justify-start text-lg font-medium hover:text-destructive"
-                onClick={() => {
-                  logout();
-                  handleLinkClick();
-                }}
-              >
-                <LogOut className="mr-2 h-5 w-5" />
-                Logout
-            </Button>
         </>
     )
   }
@@ -114,15 +87,6 @@ export function Header() {
               <nav className="flex flex-col gap-2 mt-8">
                 {renderNavLinks()}
               </nav>
-              {user && (
-                 <div className="mt-auto pt-4">
-                  <Separator />
-                   <div className="flex items-center gap-3 mt-4 text-sm text-muted-foreground">
-                    <UserCheck className="h-5 w-5" />
-                    <p className="capitalize font-medium">Public User</p>
-                   </div>
-                 </div>
-              )}
             </SheetContent>
           </Sheet>
         </div>

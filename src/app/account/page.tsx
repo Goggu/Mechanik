@@ -12,7 +12,7 @@ export default function AccountPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">This is where user account details and settings will be displayed.</p>
+          <p className="text-muted-foreground">You are currently using the app as an anonymous user. There are no account details to display.</p>
         </CardContent>
       </Card>
     </div>
