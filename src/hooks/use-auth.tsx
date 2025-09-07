@@ -5,19 +5,26 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import {
   onAuthStateChanged,
   User as FirebaseUser,
-  signInAnonymously,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  signOut,
+  ConfirmationResult
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 
 interface User {
   uid: string;
-  isAnonymous: boolean;
+  phoneNumber: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  setupRecaptcha: (phoneNumber: string) => Promise<ConfirmationResult>;
+  confirmOtp: (confirmationResult: ConfirmationResult, otp: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,29 +35,63 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+      if (firebaseUser && firebaseUser.phoneNumber) {
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const userDoc = await getDoc(userRef);
+
+        if (!userDoc.exists()) {
+          // Create a new user document if it doesn't exist
+          await setDoc(userRef, {
+            uid: firebaseUser.uid,
+            phoneNumber: firebaseUser.phoneNumber,
+            createdAt: serverTimestamp(),
+          });
+        }
+        
         setUser({
           uid: firebaseUser.uid,
-          isAnonymous: firebaseUser.isAnonymous,
+          phoneNumber: firebaseUser.phoneNumber,
         });
+
       } else {
-        // No user is signed in, so create an anonymous user.
-        await signInAnonymously(auth).catch(error => {
-          console.error("Error signing in anonymously:", error);
-        });
+        setUser(null);
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
-  
+
+  const setupRecaptcha = (phoneNumber: string): Promise<ConfirmationResult> => {
+     const recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible',
+      'callback': (response: any) => {
+        // reCAPTCHA solved, allow signInWithPhoneNumber.
+      }
+    });
+    return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+  }
+
+  const confirmOtp = async (confirmationResult: ConfirmationResult, otp: string) => {
+    await confirmationResult.confirm(otp);
+    // onAuthStateChanged will handle the user creation/update
+  }
+
+  const logout = async () => {
+    setLoading(true);
+    await signOut(auth);
+    // onAuthStateChanged will set user to null and loading to false
+  };
+
   const value = {
     user,
     loading,
+    setupRecaptcha,
+    confirmOtp,
+    logout,
   };
 
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="flex items-center justify-center h-screen w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Languages, Menu, Home, User as UserIcon } from "lucide-react";
+import { Languages, Menu, Home, User as UserIcon, LogOut } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/hooks/use-auth";
 
 const NavLink = ({ href, onClick, children }: { href: string; onClick: () => void; children: React.ReactNode }) => (
     <Link href={href} passHref>
@@ -33,6 +34,7 @@ const NavLink = ({ href, onClick, children }: { href: string; onClick: () => voi
 
 export function Header() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const handleLinkClick = () => {
     setIsSheetOpen(false);
@@ -47,6 +49,18 @@ export function Header() {
             <NavLink href="/account" onClick={handleLinkClick}>
                 <UserIcon className="mr-2 h-5 w-5" /> Account
             </NavLink>
+             {user && (
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-lg font-medium"
+                onClick={() => {
+                  logout();
+                  handleLinkClick();
+                }}
+              >
+                <LogOut className="mr-2 h-5 w-5" /> Logout
+              </Button>
+            )}
         </>
     )
   }

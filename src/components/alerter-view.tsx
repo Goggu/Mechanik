@@ -5,20 +5,13 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Phone, Siren, Loader2, ShieldPlus, User, UserRound, Users, CircleHelp, XCircle } from "lucide-react";
+import { Phone, Siren, Loader2, ShieldPlus, User, UserRound, Users, CircleHelp, XCircle, KeyRound } from "lucide-react";
 import { collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
+import type { ConfirmationResult } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -31,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 type AlertStatus = "idle" | "sending" | "sent" | "accepted" | "error";
 type Gender = 'male' | 'female' | 'trans';
@@ -44,11 +38,12 @@ type AlertData = {
   gender: Gender;
 };
 
-const formSchema = z.object({
-  phone: z
-    .string()
-    .min(10, "A valid phone number is required.")
-    .max(20, "Phone number is too long."),
+const phoneFormSchema = z.object({
+  phone: z.string().min(10, "A valid phone number is required."),
+});
+
+const otpFormSchema = z.object({
+  otp: z.string().min(6, "Your OTP must be 6 characters."),
 });
 
 const genderOptions: { id: Gender; label: string; icon: React.ElementType }[] = [
@@ -58,20 +53,28 @@ const genderOptions: { id: Gender; label: string; icon: React.ElementType }[] = 
 ];
 
 export function AlerterView() {
-  const { user } = useAuth();
+  const { user, loading, setupRecaptcha, confirmOtp } = useAuth();
   const [alertStatus, setAlertStatus] = useState<AlertStatus>("idle");
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null);
   const [alertData, setAlertData] = useState<AlertData | null>(null);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
-  const [showSendDialog, setShowSendDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [location, setLocation] = useState<Geolocation | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+
+  const phoneForm = useForm<z.infer<typeof phoneFormSchema>>({
+    resolver: zodResolver(phoneFormSchema),
     defaultValues: { phone: "" },
   });
+
+  const otpForm = useForm<z.infer<typeof otpFormSchema>>({
+    resolver: zodResolver(otpFormSchema),
+    defaultValues: { otp: "" },
+  });
+
 
   useEffect(() => {
     if (!activeAlertId) return;
@@ -83,7 +86,6 @@ export function AlerterView() {
           setAlertStatus("accepted");
         }
       } else {
-        // Document was deleted (either accepted and reset, or cancelled)
         if (alertStatus !== 'accepted') {
            resetSimulation();
         }
@@ -93,6 +95,48 @@ export function AlerterView() {
     return () => unsub();
   }, [activeAlertId, alertStatus]);
 
+  const handleSendOtp = async (values: z.infer<typeof phoneFormSchema>) => {
+    setIsSubmitting(true);
+    try {
+      const result = await setupRecaptcha(values.phone);
+      setConfirmationResult(result);
+      setPhoneNumber(values.phone);
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to Send OTP",
+        description: "Could not send verification code. Please check the phone number and try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleVerifyOtp = async (values: z.infer<typeof otpFormSchema>) => {
+    if (!confirmationResult) return;
+    setIsSubmitting(true);
+    try {
+      await confirmOtp(confirmationResult, values.otp);
+      toast({
+        variant: "success",
+        title: "Phone Verified",
+        description: "You are now signed in.",
+        duration: 3000,
+      });
+      // The useAuth hook will handle the user state change
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      toast({
+        variant: "destructive",
+        title: "Invalid OTP",
+        description: "The code you entered is incorrect. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+      otpForm.reset();
+    }
+  };
 
   const handleSendAlertClick = () => {
     if (!selectedGender) {
@@ -113,13 +157,16 @@ export function AlerterView() {
       return;
     }
 
+    setIsSubmitting(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setLocation({ latitude, longitude });
-        setShowSendDialog(true);
+        const newLocation = { latitude, longitude };
+        setLocation(newLocation);
+        handleAlertCreation(newLocation);
       },
       (error) => {
+        setIsSubmitting(false);
         toast({
           variant: "destructive",
           title: "Geolocation Error",
@@ -132,26 +179,25 @@ export function AlerterView() {
     );
   };
 
-  const handleFormSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!location || !selectedGender || !user) {
+  const handleAlertCreation = async (currentLocation: Geolocation) => {
+     if (!selectedGender || !user || !user.phoneNumber) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Location, gender, and user authentication are required.",
+        description: "User authentication and gender selection are required.",
       });
+      setIsSubmitting(false);
       return;
     }
     
-    setIsSubmitting(true);
-    const currentAlertData = { phone: values.phone, location, gender: selectedGender };
+    const currentAlertData = { phone: user.phoneNumber, location: currentLocation, gender: selectedGender };
     setAlertData(currentAlertData);
     setAlertStatus("sent");
-    setShowSendDialog(false);
 
     try {
         const docRef = await addDoc(collection(db, "alerts"), {
             alerterId: user.uid,
-            phone: values.phone,
+            phone: user.phoneNumber,
             location: currentAlertData.location,
             gender: currentAlertData.gender,
             status: 'pending',
@@ -168,9 +214,9 @@ export function AlerterView() {
         resetSimulation();
     } finally {
         setIsSubmitting(false);
-        form.reset();
     }
   };
+
 
   const cancelAlert = async () => {
     if (activeAlertId) {
@@ -196,6 +242,98 @@ export function AlerterView() {
     setActiveAlertId(null);
   };
   
+  if (loading) {
+    return (
+       <div className="flex flex-col items-center gap-6 text-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="w-full max-w-sm mx-auto">
+      {!confirmationResult ? (
+        <Card className="animate-in fade-in-50 duration-500">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Phone /> Get Started
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">Enter your phone number to sign in or create an account.</p>
+            <Form {...phoneForm}>
+              <form onSubmit={phoneForm.handleSubmit(handleSendOtp)} className="space-y-4">
+                <FormField
+                  control={phoneForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="sr-only">Phone Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter phone number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={isSubmitting} className="w-full">
+                  {isSubmitting ? <Loader2 className="animate-spin" /> : "Send OTP"}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      ) : (
+         <Card className="animate-in fade-in-50 duration-500">
+           <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <KeyRound /> Verify OTP
+            </CardTitle>
+          </CardHeader>
+           <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Enter the 6-digit code sent to {phoneNumber}.
+            </p>
+            <Form {...otpForm}>
+              <form onSubmit={otpForm.handleSubmit(handleVerifyOtp)} className="space-y-6 flex flex-col items-center">
+                <FormField
+                  control={otpForm.control}
+                  name="otp"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="sr-only">One-Time Password</FormLabel>
+                      <FormControl>
+                        <InputOTP maxLength={6} {...field}>
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={isSubmitting} className="w-full">
+                  {isSubmitting ? <Loader2 className="animate-spin" /> : "Verify & Sign In"}
+                </Button>
+              </form>
+            </Form>
+             <Button variant="link" size="sm" className="mt-4" onClick={() => {setConfirmationResult(null); phoneForm.reset()}}>
+                Use a different number
+             </Button>
+          </CardContent>
+        </Card>
+      )}
+      </div>
+    );
+  }
+
   if (alertStatus === "idle") {
     return (
       <div className="flex flex-col items-center gap-8 animate-in fade-in-50 duration-500">
@@ -234,65 +372,14 @@ export function AlerterView() {
             "h-24 w-64 text-2xl font-bold rounded-full bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg hover:shadow-xl transition-all",
             "disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none",
             !selectedGender && "animate-none",
-             selectedGender && "animate-pulse-slow"
+             selectedGender && !isSubmitting && "animate-pulse-slow"
           )}
           onClick={handleSendAlertClick}
-          disabled={!selectedGender}
+          disabled={!selectedGender || isSubmitting}
         >
-          <Siren className="mr-4 h-8 w-8" />
-          SEND ALERT
+          {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : <Siren className="mr-4 h-8 w-8" />}
+          {isSubmitting? "Getting Location..." : "SEND ALERT"}
         </Button>
-
-        <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Confirm Alert</DialogTitle>
-                    <DialogDescription>
-                    Please provide your phone number. Your current location will be
-                    sent along with the alert.
-                    </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                    <form
-                    onSubmit={form.handleSubmit(handleFormSubmit)}
-                    className="space-y-4 pt-4"
-                    >
-                    <FormField
-                        control={form.control}
-                        name="phone"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Phone Number</FormLabel>
-                            <FormControl>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                placeholder="e.g., (123) 456-7890"
-                                {...field}
-                                className="pl-10"
-                                />
-                            </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <DialogFooter>
-                        <Button type="submit" disabled={isSubmitting} className="w-full">
-                        {isSubmitting ? (
-                            <Loader2 className="animate-spin" />
-                        ) : (
-                            <Siren />
-                        )}
-                        {isSubmitting
-                            ? "Sending..."
-                            : "Confirm and Send Alert"}
-                        </Button>
-                    </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
       </div>
     );
   }
