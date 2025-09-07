@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Languages, Menu, LogOut, UserCheck, Home, Wallet, User as UserIcon } from "lucide-react";
+import { Languages, Menu, LogOut, UserCheck, Home, User as UserIcon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -23,7 +23,6 @@ import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "./ui/separator";
-import { Badge } from "./ui/badge";
 
 const NavLink = ({ href, onClick, children }: { href: string; onClick: () => void; children: React.ReactNode }) => (
     <Link href={href} passHref>
@@ -41,14 +40,6 @@ export function Header() {
   const handleLinkClick = () => {
     setIsSheetOpen(false);
   };
-  
-  const getUserTypeDisplay = () => {
-    if (!user) return null;
-    if (user.userType === 'partner') {
-      return `Partner: ${user.partnerType}`;
-    }
-    return 'Public User';
-  }
   
   const renderNavLinks = () => {
     if (!user) {
@@ -69,18 +60,6 @@ export function Header() {
             <NavLink href="/" onClick={handleLinkClick}>
                 <Home className="mr-2 h-5 w-5" /> Home
             </NavLink>
-             {user.userType === 'partner' && (
-                <div className="relative">
-                    <NavLink href="/wallet" onClick={handleLinkClick}>
-                        <Wallet className="mr-2 h-5 w-5" /> Wallet
-                    </NavLink>
-                    {user.walletBalance !== undefined && (
-                        <Badge variant="secondary" className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                            ₹{user.walletBalance.toFixed(2)}
-                        </Badge>
-                    )}
-                </div>
-            )}
             <NavLink href="/account" onClick={handleLinkClick}>
                 <UserIcon className="mr-2 h-5 w-5" /> Account
             </NavLink>
@@ -140,7 +119,7 @@ export function Header() {
                   <Separator />
                    <div className="flex items-center gap-3 mt-4 text-sm text-muted-foreground">
                     <UserCheck className="h-5 w-5" />
-                    <p className="capitalize font-medium">{getUserTypeDisplay()}</p>
+                    <p className="capitalize font-medium">Public User</p>
                    </div>
                  </div>
               )}

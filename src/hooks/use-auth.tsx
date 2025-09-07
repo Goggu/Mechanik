@@ -8,21 +8,17 @@ import {
   signInWithEmailAndPassword,
   signOut,
   User as FirebaseUser,
+  signInAnonymously,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-type UserType = "public" | "partner";
-type PartnerType = "male" | "female" | "trans";
-
 interface User {
   uid: string;
   email: string | null;
-  userType?: UserType;
-  partnerType?: PartnerType;
-  walletBalance?: number;
+  isAnonymous: boolean;
 }
 
 interface AuthContextType {
@@ -30,9 +26,7 @@ interface AuthContextType {
   loading: boolean;
   signup: (
     email: string,
-    password: string,
-    userType: UserType,
-    partnerType?: PartnerType
+    password: string
   ) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -56,18 +50,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            userType: userData.type,
-            partnerType: userData['sub-type'],
-            walletBalance: userData.walletBalance,
+            isAnonymous: firebaseUser.isAnonymous,
           });
         } else {
-            // This might happen if the user was created in auth but not in firestore
-            // Or if they are a new signup and the doc hasn't been created yet.
-            // For now, we set basic info. The signup/login functions will set the rest.
-             setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+            // This could be a new signup or an anonymous user
+             setUser({ 
+               uid: firebaseUser.uid, 
+               email: firebaseUser.email,
+               isAnonymous: firebaseUser.isAnonymous 
+              });
         }
       } else {
-        setUser(null);
+        // No user is signed in, so create an anonymous user.
+        await signInAnonymously(auth).catch(error => {
+          console.error("Error signing in anonymously:", error);
+        });
       }
       setLoading(false);
     });
@@ -78,8 +75,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signup = async (
     email: string,
     password: string,
-    userType: UserType,
-    partnerType?: PartnerType
   ) => {
     const userCredential = await createUserWithEmailAndPassword(
       auth,
@@ -89,27 +84,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const firebaseUser = userCredential.user;
     
     const userDocRef = doc(db, "users", firebaseUser.uid);
-    const userDataToSave: any = {
+    const userDataToSave = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        type: userType,
+        type: 'public',
     };
-
-    if (userType === 'partner') {
-        userDataToSave.walletBalance = 100.00; // Starting balance
-        if (partnerType) {
-            userDataToSave['sub-type'] = partnerType;
-        }
-    }
 
     await setDoc(userDocRef, userDataToSave);
 
     setUser({
       uid: firebaseUser.uid,
       email: firebaseUser.email,
-      userType: userType,
-      partnerType: partnerType,
-      walletBalance: userType === 'partner' ? 100.00 : undefined,
+      isAnonymous: false,
     });
   };
 
@@ -119,8 +105,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email,
       password
     );
-    // onAuthStateChanged will handle setting the user state, 
-    // we don't need to call setUser here to avoid race conditions.
   };
 
   const logout = async () => {

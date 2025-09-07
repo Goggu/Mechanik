@@ -26,29 +26,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(8, "Password must be at least 8 characters."),
-  userType: z.enum(["public", "partner"], {
-    required_error: "You need to select a user type.",
-  }),
-  partnerType: z.enum(["male", "female", "trans"]).optional(),
-})
-.refine(data => {
-    if (data.userType === 'partner' && !data.partnerType) {
-        return false;
-    }
-    return true;
-}, {
-    message: "Please select a partner subtype.",
-    path: ["partnerType"],
 });
 
 export default function SignUpPage() {
@@ -61,15 +44,12 @@ export default function SignUpPage() {
     defaultValues: {
       email: "",
       password: "",
-      userType: "public",
     },
   });
 
-  const userType = form.watch("userType");
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-        await signup(values.email, values.password, values.userType, values.partnerType);
+        await signup(values.email, values.password);
         router.push("/");
     } catch (error: any) {
         console.error("Signup error:", error);
@@ -148,80 +128,7 @@ export default function SignUpPage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="userType"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Select User Type</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex space-x-4"
-                      >
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="public" />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            Public
-                          </FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="partner" />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            Partner
-                          </FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {userType === "partner" && (
-                <FormField
-                  control={form.control}
-                  name="partnerType"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3 animate-in fade-in-50 duration-300">
-                      <FormLabel>Select Partner Subtype</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex space-x-4"
-                        >
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="male" />
-                            </FormControl>
-                            <FormLabel className="font-normal">Male</FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="female" />
-                            </FormControl>
-                            <FormLabel className="font-normal">Female</FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="trans" />
-                            </FormControl>
-                            <FormLabel className="font-normal">Trans</FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
+              
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign Up

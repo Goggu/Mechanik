@@ -6,7 +6,6 @@ import Link from "next/link";
 import { ShieldPlus, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlerterView } from "@/components/alerter-view";
-import { ResponderView } from "@/components/responder-view";
 
 export default function Home() {
   const { user } = useAuth();
@@ -21,7 +20,7 @@ export default function Home() {
               Need Assistance?
             </h2>
             <p className="text-muted-foreground">
-              Your location will be shared to guide them to you. Please sign in or create an account to send or receive alerts.
+              Your location will be shared to guide them to you. Please sign in or create an account to send alerts.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
@@ -41,15 +40,7 @@ export default function Home() {
       );
     }
 
-    if (user.userType === 'public') {
-      return <AlerterView />;
-    }
-
-    if (user.userType === 'partner') {
-      return <ResponderView />;
-    }
-
-    return null;
+    return <AlerterView />;
   }
 
   return (
