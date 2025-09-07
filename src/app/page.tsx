@@ -6,7 +6,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Phone, Siren, Loader2, ShieldPlus, User, UserRound, Users, CircleHelp, XCircle, KeyRound } from "lucide-react";
-import { collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import type { ConfirmationResult } from "firebase/auth";
@@ -83,14 +83,14 @@ export default function Home() {
     defaultValues: { otp: "" },
   });
 
-  // Effect to proceed with alert creation after successful login.
   useEffect(() => {
-    if (user && showAuthModal && selectedGender) {
+    // This effect will run when the user is successfully authenticated and the modal is still open.
+    // It proceeds to the next step of the alert process.
+    if (user && showAuthModal) {
       setShowAuthModal(false);
-      // Now that the user is authenticated, get the location.
       getLocationAndCreateAlert();
     }
-  }, [user, showAuthModal, selectedGender]);
+  }, [user, showAuthModal]);
 
 
   useEffect(() => {
@@ -103,7 +103,6 @@ export default function Home() {
           setAlertStatus("accepted");
         }
       } else {
-        // If doc is deleted and we haven't been accepted, it was cancelled.
         if (alertStatus !== 'accepted') {
            resetSimulation();
         }
@@ -136,14 +135,28 @@ export default function Home() {
     setIsSubmitting(true);
     try {
       await confirmOtp(confirmationResult, values.otp);
-      // onAuthStateChanged in useAuth will set the user.
-      // The useEffect hook will then close the modal and trigger alert creation.
-       toast({
+      
+      // The `onAuthStateChanged` in useAuth will set the user.
+      // We also need to create the user document in Firestore.
+      const userCredential = await confirmationResult.confirm(values.otp);
+      const firebaseUser = userCredential.user;
+
+      if (firebaseUser) {
+        const userRef = doc(db, "users", firebaseUser.uid);
+        await setDoc(userRef, {
+            uid: firebaseUser.uid,
+            phoneNumber: firebaseUser.phoneNumber,
+            createdAt: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      toast({
         variant: "success",
         title: "Phone Verified",
         description: "You are now signed in. Creating your alert...",
         duration: 3000,
       });
+      // The useEffect hook watching `user` will close the modal and trigger the alert creation.
     } catch (error) {
       console.error("Error verifying OTP:", error);
       toast({
@@ -172,7 +185,6 @@ export default function Home() {
         return;
     }
     
-    // If user is already logged in, proceed directly.
     getLocationAndCreateAlert();
   };
 
@@ -187,7 +199,7 @@ export default function Home() {
     }
 
     setIsSubmitting(true);
-    setAlertStatus("sending"); // Indicate we are starting the process
+    setAlertStatus("sending"); 
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -225,8 +237,7 @@ export default function Home() {
     
     const currentAlertData = { phone: user.phoneNumber, location: currentLocation, gender: selectedGender };
     setAlertData(currentAlertData);
-    setAlertStatus("sent");
-
+    
     try {
         const docRef = await addDoc(collection(db, "alerts"), {
             alerterId: user.uid,
@@ -237,6 +248,7 @@ export default function Home() {
             createdAt: serverTimestamp(),
         });
         setActiveAlertId(docRef.id);
+        setAlertStatus("sent");
     } catch (error) {
         console.error("Error sending alert:", error);
         toast({
@@ -463,13 +475,10 @@ export default function Home() {
              selectedGender && !isSubmitting && "animate-pulse-slow"
           )}
           onClick={handleSendAlertClick}
-          disabled={isSubmitting}
+          disabled={isSubmitting || alertStatus === 'sending'}
         >
           {alertStatus === 'sending' ? (
-            <>
-              <Loader2 className="animate-spin h-8 w-8" />
-              Please wait...
-            </>
+            <Loader2 className="animate-spin h-8 w-8" />
           ) : (
             <>
               <Siren className="mr-4 h-8 w-8" />
@@ -481,5 +490,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
