@@ -115,9 +115,10 @@ export default function Home() {
   const handleSendOtp = async (values: z.infer<typeof phoneFormSchema>) => {
     setIsSubmitting(true);
     try {
-      const result = await setupRecaptcha(values.phone);
+      const formattedPhoneNumber = `+1${values.phone}`;
+      const result = await setupRecaptcha(formattedPhoneNumber);
       setConfirmationResult(result);
-      setPhoneNumber(values.phone);
+      setPhoneNumber(formattedPhoneNumber);
     } catch (error) {
       console.error("Error sending OTP:", error);
       toast({
@@ -490,3 +491,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
